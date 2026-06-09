@@ -115,11 +115,27 @@ Contrato arquitectural representativo (`fitness_coach.json`). Estandarizado en e
 
 ---
 
-## 6. CONTRATO DEL PAYLOAD (Protocolo de Inferencia Rápida)
+## 6. ARQUITECTURA DEL PERFIL EVOLUTIVO (SQLite EAV)
 
-En `Pydantic` y `Dart`, las directivas se normalizan bajo convenciones compartidas `snake_case`. La latencia se minimiza podando el contexto experto local a ~400 palabras ANTES de viajar por la red rediciendo el peso cognitivo sobre CPU.
+Para garantizar que el modelo de IA (Qwen 2.5) local del VPS pueda persistir el conocimiento dinámicamente sin requerir modificaciones estructurales o de código en la base de datos del móvil, hemos implementado el **Patrón EAV (Entity-Attribute-Value)**.
 
-**Ejemplo de Petición HTTP POST hacia `/api/v1/chat`**:
+**Esquema de la Tabla (`perfil_usuario`):**
+
+- `id`: `INTEGER PRIMARY KEY AUTOINCREMENT`
+- `categoria`: `TEXT NOT NULL` (ej. 'salud', 'longevidad', 'preferencias')
+- `clave`: `TEXT NOT NULL UNIQUE` (ej. 'lesion_sacroiliaca', 'stack_tecnologico')
+- `valor`: `TEXT NOT NULL` (La información cruda u observación deducida)
+- `ultima_actualizacion`: `TEXT NOT NULL` (Timestamp ISO8601)
+
+Esta tabla interactúa directamente con el interceptor `<perfil_update>` proveniente del backend, haciendo inserciones atómicas `INSERT OR REPLACE INTO (Upsert)` en tiempo real.
+
+---
+
+## 7. CONTRATO DE DATOS (Protocolo de Inferencia Rápida)
+
+En `Pydantic` (FastAPI) y `Dart` (Flutter), todos los objetos de transporte se normalizan bajo un contrato **strict snake_case**. La latencia se minimiza podando el contexto experto local a ~400 palabras ANTES de que el payload cruce la red, mitigando la carga sobre la CPU remota.
+
+### 7.1. Solicitud (HTTP POST `ChatRequest` a `/api/v1/chat`)
 
 ```json
 {
@@ -144,11 +160,24 @@ En `Pydantic` y `Dart`, las directivas se normalizan bajo convenciones compartid
 }
 ```
 
+### 7.2. Respuesta (HTTP `ChatResponse` desde el VPS)
+
+El servidor extrae cualquier mandato de modificación EAV escondido en un formato pseudo-XML `<perfil_update>` emitido por la IA para inyectarlo en el array `perfil_update`:
+
+```json
+{
+  "status": "success",
+  "assistant_response": "Evita toda carga axial hoy. Hemos registrado la presión en el área sacrolumbar. Haz estiramientos.",
+  "perfil_update": "[{\"categoria\": \"salud\", \"clave\": \"molestia_lumbar\", \"valor\": \"Presión en L4 detectada\"}]",
+  "inferenced_by": "google_gemini_sdk_cloud"
+}
+```
+
 ---
 
-## 7. GUÍA DE INSTALACIÓN, DESPLIEGUE Y OPERACIÓN COMPLETA
+## 8. GUÍA DE INSTALACIÓN, DESPLIEGUE Y OPERACIÓN COMPLETA
 
-### 7.1 Optimizaciones en VPS para Ollama (Límite de Consumo RAM/CPU)
+### 8.1 Optimizaciones en VPS para Ollama (Límite de Consumo RAM/CPU)
 
 Para asegurar que el modelo sobreviva a concurrencia alta en un servidor económico.
 
@@ -168,7 +197,7 @@ Environment="OLLAMA_NUM_CTX=4096" # Hard limit del contexto a 4k (salva RAM)
 Environment="OLLAMA_KEEP_ALIVE=-1" # Impide que se evicte el modelo de 7B tras inactividad
 ```
 
-### 7.2 Lanzamiento Asíncrono de FastAPI
+### 8.2 Lanzamiento Asíncrono de FastAPI
 
 Restringimos fuertemente los workers explícitamente a 2 (`--workers 2`) para evitar que Python I/O robe tiempos de CPU críticos que requiere el pipeline matemático del LLM subyacente.
 
@@ -182,7 +211,7 @@ pip install fastapi pydantic uvicorn[standard] python-dotenv
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers
 ```
 
-### 7.3 Despliegue en Entornos Reales Edge (iPhone Físico)
+### 8.3 Despliegue en Entornos Reales Edge (iPhone Físico)
 
 A.G.O.S se ha diseñado para poder probarlo y desplegarlo en dispositivos físicos iOS sin necesidad inmediata de una cuenta Apple Developer de pago.
 
@@ -217,7 +246,7 @@ A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox per
 
 ---
 
-## 8. SEGURIDAD COMPROBADA Y PARÁMETROS AGNOSTICOS
+## 9. SEGURIDAD COMPROBADA Y PARÁMETROS AGNOSTICOS
 
 - **Evitando el Sobrepensamiento del Modelo:** La lógica implementada a lo largo del sistema y los inyectores imponen al framework (Ollama / Express gemini API fallback) condiciones espartanas obligatorias: `temperature=0.3`, `top_p=0.9` y `max_tokens` delimitados a `200/300` para evadir respuestas que ahoguen la CPU (Alucinaciones de cola larga de probabilidad).
 - **Total Aislamiento Stateless:** Todo usuario que llega al Backend es procesado dentro de un endpoint inmutable. Si la red cae, el servidor no conservará retazos del perfil SQLite del usuario, logrando cero cruce de datos por diseño y mitigando ataques locales (LFI/RCE).
