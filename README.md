@@ -63,7 +63,10 @@ El dispositivo móvil contiene toda la identidad y la memoria relacional, y asum
 - **Validación Estricta:** `Pydantic v2` garantiza que los contratos JSON `snake_case` coincidan al bit.
 - **Motor Inferencial Intercambiable:** Se corre **Ollama (Qwen 2.5 7B Instruct cuantizado en Q4_K_M)** que permite una inferencia ultrarrápida. Si hay saturación, un flag `USE_CLOUD_FALLBACK=True` redirecciona la carga térmica a los SDKs de **Gemini** o OpenAI manteniendo idéntica compatibilidad en el payload de las llamadas locales.
 
-_(Nota: En nuestro entorno de PoC actual, estos servicios de Borde y Nube se simulan mediante componentes React/Vite [bóveda móvil local] y Node.js/Express [procesador de inferencia lógico], emulando la encriptación local AES, la poda de RAG híbrido de 400 tokens, y el enrutamiento server-less stateless de las llamadas de FastApi)._
+\_(Nota: La base del código incorpora ahora las implementaciones técnicas reales para producción en arquitecturas reales:
+
+- \`lib/services/secure_storage_service.dart\`: Encargado de la persistencia at-rest AES-256 en el móvil (Nano-Obsidian).
+- \`app/services/inference*router.py\`: El orquestador backend asíncrono para FastAPI con soporte agnóstico Ollama/Gemini y manejo de Cloud Fallback).*
 
 ---
 
