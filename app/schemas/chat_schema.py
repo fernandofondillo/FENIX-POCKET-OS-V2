@@ -27,8 +27,13 @@ class ChatRequest(BaseModel):
     historial_reciente: List[Message] = Field(..., description="Cola FIF0 límite estricto de historial (8 mensajes)")
     mensaje_actual: str = Field(..., description="El prompt terminal a inferir")
 
+class PerfilUpdateItem(BaseModel):
+    categoria: str = Field(..., description="Categoría de la entidad EAV, ej. 'salud', 'longevidad', 'preferencias'")
+    clave: str = Field(..., description="Llave del atributo EAV en snake_case, ej. 'lesion_sacroiliaca'")
+    valor: str = Field(..., description="Valor correspondiente deducido por el modelo en texto plano")
+
 class ChatResponse(BaseModel):
     status: str = Field(..., description="'success' o 'interrupted'")
     assistant_response: str = Field(..., description="Texto purgado listo para renderizarse en la UI del móvil")
-    perfil_update: str = Field(default="[]", description="Array de diccionarios en JSON plano de mutaciones EAV de SQLite. Ej: '[{\"categoria\": \"salud\", \"clave\": \"lesion\", \"valor\": \"L4\"}]'")
+    perfil_update: List[PerfilUpdateItem] = Field(default_factory=list, description="Array de diccionarios con las mutaciones EAV de SQLite a sincronizar")
     inferenced_by: str = Field(..., description="Orquestador utilizado vía Cloud Bypass (ollama_offline_x86 / google_gemini_sdk_cloud)")

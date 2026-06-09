@@ -90,38 +90,6 @@ class InferenceRouter:
         )
         return response.text
 
-    def _extract_profile_skills(self, raw_text: str) -> Dict[str, Any]:
-        """
-        Interpreta posibles inyecciones JSON para la mutación del Perfil Evolutivo en el móvil.
-        Intercepta los Tags <perfil_update> antes de derivar la mensajería del chat.
-        """
-        extracted_updates = []
-        clean_presentation_text = raw_text
-        
-        # Buscar Tags heurísticos XML incrustados 
-        match = re.search(r'<perfil_update>(.*?)</perfil_update>', raw_text, re.DOTALL)
-        if match:
-            json_str = match.group(1).strip()
-            # Purgar escapes Markdown 
-            json_str = re.sub(r'```json\n|\n```|```', '', json_str)
-            try:
-                parsed = json.loads(json_str)
-                if isinstance(parsed, list):
-                    extracted_updates = parsed
-                elif isinstance(parsed, dict):
-                    extracted_updates = [parsed]
-                logger.info(f"Function Calling Exitoso: Se interceptaron mutaciones de Perfil SQLite.")
-            except json.JSONDecodeError as e:
-                logger.error(f"Function Calling Fallido (JSON Crítico Corrupto): {e}")
-            
-            # Limpieza del Tag de la salida conversacional humana
-            clean_presentation_text = re.sub(r'<perfil_update>.*?</perfil_update>', '', raw_text, flags=re.DOTALL).strip()
-        
-        return {
-            "view_text": clean_presentation_text,
-            "sqlite_mutations_str": json.dumps(extracted_updates)
-        }
-
     async def execute_inferential_cycle(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Ejecuta el pipeline completo y resuelve el contrato Pydantic. 
@@ -180,12 +148,9 @@ class InferenceRouter:
                 raw_llm_response = "Disculpa, he perdido temporalmente el enlace a la matriz cognitiva y de respaldo híbrido. Reintenta."
                 processing_engine = "system_failure"
 
-        # Formateador final y extractor de heurísticas SQLite para el cliente Dart
-        processed_data = self._extract_profile_skills(raw_llm_response)
-
+        # La extracción de heurísticas EAV se desplaza hacia main.py según la nueva arquitectura
         return {
             "status": "success" if processing_engine != "system_failure" else "interrupted",
-            "assistant_response": processed_data["view_text"],
-            "perfil_update": processed_data["sqlite_mutations_str"],
+            "assistant_response": raw_llm_response,
             "inferenced_by": processing_engine
         }

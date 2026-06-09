@@ -117,17 +117,30 @@ Contrato arquitectural representativo (`fitness_coach.json`). Estandarizado en e
 
 ## 6. ARQUITECTURA DEL PERFIL EVOLUTIVO (SQLite EAV)
 
-Para garantizar que el modelo de IA (Qwen 2.5) local del VPS pueda persistir el conocimiento dinámicamente sin requerir modificaciones estructurales o de código en la base de datos del móvil, hemos implementado el **Patrón EAV (Entity-Attribute-Value)**.
+Para garantizar que el modelo de IA (Qwen 2.5) local del VPS pueda persistir el conocimiento dinámicamente sin requerir migraciones de base de datos, modificaciones estructurales o de código en el móvil, hemos formalizado el **Patrón EAV (Entity-Attribute-Value)**. Tradicionalmente, agregar un nuevo campo (ej. "nivel_colesterol") requeriría una migración `ALTER TABLE`. Con EAV, la IA estructura el conocimiento como filas independientes de metadatos.
 
 **Esquema de la Tabla (`perfil_usuario`):**
 
 - `id`: `INTEGER PRIMARY KEY AUTOINCREMENT`
-- `categoria`: `TEXT NOT NULL` (ej. 'salud', 'longevidad', 'preferencias')
-- `clave`: `TEXT NOT NULL UNIQUE` (ej. 'lesion_sacroiliaca', 'stack_tecnologico')
-- `valor`: `TEXT NOT NULL` (La información cruda u observación deducida)
+- `categoria`: `TEXT NOT NULL` (La Entidad agrupadora, ej. 'salud', 'longevidad', 'preferencias')
+- `clave`: `TEXT NOT NULL UNIQUE` (El Atributo único, ej. 'lesion_sacroiliaca', 'stack_tecnologico')
+- `valor`: `TEXT NOT NULL` (El Valor: la información cruda u observación deducida)
 - `ultima_actualizacion`: `TEXT NOT NULL` (Timestamp ISO8601)
 
-Esta tabla interactúa directamente con el interceptor `<perfil_update>` proveniente del backend, haciendo inserciones atómicas `INSERT OR REPLACE INTO (Upsert)` en tiempo real.
+### 6.1. Integridad Estructural y Upserts Atómicos
+
+El sistema gestiona la actualización ininterrumpida a través de transacciones SQL **Upsert** (`INSERT OR REPLACE INTO`).
+Cuando el LLM deduce un estado a partir del diálogo (ej. _el usuario dice "Me duele la espalda hoy"_), el orquestador backend detecta el patrón y responde emitiendo una inyección estructurada oculta en la respuesta:
+
+```xml
+<perfil_update>
+  [
+    {"categoria": "salud", "clave": "molestia_lumbar", "valor": "Dolor activo comunicado por el usuario"}
+  ]
+</perfil_update>
+```
+
+Al recibirse en Flutter (`perfil_db_service.dart`), la app móvil procesa este objeto json, y si la clave `molestia_lumbar` ya existe, **actualiza** su valor y el timestamp `ultima_actualizacion` manteniendo el `id` o **insertando** la nueva observación en caso de ausencia. Este mecanismo garantiza un perfil constantemente evolutivo sin requerir alteraciones en la arquitectura relacional (Zero Migrations Strategy).
 
 ---
 
@@ -168,7 +181,13 @@ El servidor extrae cualquier mandato de modificación EAV escondido en un format
 {
   "status": "success",
   "assistant_response": "Evita toda carga axial hoy. Hemos registrado la presión en el área sacrolumbar. Haz estiramientos.",
-  "perfil_update": "[{\"categoria\": \"salud\", \"clave\": \"molestia_lumbar\", \"valor\": \"Presión en L4 detectada\"}]",
+  "perfil_update": [
+    {
+      "categoria": "salud",
+      "clave": "molestia_lumbar",
+      "valor": "Presión en L4 detectada"
+    }
+  ],
   "inferenced_by": "google_gemini_sdk_cloud"
 }
 ```
