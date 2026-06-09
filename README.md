@@ -182,15 +182,38 @@ pip install fastapi pydantic uvicorn[standard] python-dotenv
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers
 ```
 
-### 7.3 Firma en Entornos Reales Edge (iPhone Físico)
+### 7.3 Despliegue en Entornos Reales Edge (iPhone Físico)
 
-A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox perimetral mediante Side-loading.
+A.G.O.S se ha diseñado para poder probarlo y desplegarlo en dispositivos físicos iOS sin necesidad inmediata de una cuenta Apple Developer de pago.
 
-1.  Abre el Workspace en Xcode (`ios/Runner.xcworkspace`).
-2.  Accede a **Signing & Capabilities**.
-3.  Usa el Free Provisioning Profile vinculado a tu iCloud (Apple ID).
-4.  Lanza el despliegue con: `flutter run -d <tuiPhoneId> --release`
-5.  _Autorenovación Continua_: Como las firmas expiran en 7 días, se recomienda operar el teléfono utilizando el framework **AltStore** / **SideStore** con daemon local para re-firmar el runtime por WiFi sin perder las bases de datos SQLite y las claves criptográficas temporales.
+#### Opción A: Flutter Live Companion (Vía FlutLab.io) — La más rápida
+
+Esta opción es el equivalente a Expo Go para el ecosistema de Flutter, ideal porque no requiere compilar un archivo `.ipa`, usar ordenadores Mac, ni cables:
+
+1. Entra en [FlutLab.io](https://flutlab.io) (un entorno de desarrollo de Flutter en la nube).
+2. Sube el código de tu repositorio de GitHub con un solo clic.
+3. Instala la app **FlutLab Runner** en tu iPhone desde la App Store oficial (es gratuita y segura).
+4. Escanea el código QR que se genera en la pantalla de tu ordenador en la web de FlutLab.
+5. Tu app de Fénix se ejecutará instantáneamente en tu iPhone, conectándose por HTTPS a tu VPS de Hostinger, pudiendo usar la encriptación AES nativa y SQLite.
+
+#### Opción B: TestFlight Público Externo — La más profesional
+
+Si cuentas con acceso esporádico a un equipo Mac:
+
+1. Sube la app compilada a la plataforma TestFlight de Apple (requiere cuenta de equipo).
+2. Genera un enlace público (`https://testflight.apple.com/...`).
+3. Instala la app oficial **TestFlight** en tu iPhone (gratis en la App Store).
+4. Al pulsar el enlace, la app se descarga en tu teléfono. Funciona de manera nativa al 100% y la versión no caducará hasta pasados 90 días, otorgando tiempo suficiente para la prueba de concepto prolongada.
+
+#### Opción C: Side-loading Local (Cableado con Xcode)
+
+A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox perimetral:
+
+1. Abre el Workspace en Xcode (`ios/Runner.xcworkspace`).
+2. Accede a **Signing & Capabilities**.
+3. Usa el Free Provisioning Profile vinculado a tu iCloud (Apple ID).
+4. Lanza el despliegue con: `flutter run -d <tuiPhoneId> --release`
+5. _Autorenovación Continua_: Como las firmas gratuitas expiran en 7 días, se recomienda operar el teléfono utilizando **AltStore** / **SideStore** con daemon local para re-firmar el runtime por WiFi sin perder las bases de datos SQLite y las claves criptográficas temporales.
 
 ---
 
