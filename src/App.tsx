@@ -126,6 +126,7 @@ export default function App() {
   const [inputMessage, setInputMessage] = useState<string>("");
   const [isProcessingChat, setIsProcessingChat] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const recognitionRef = useRef<any>(null);
 
   // Payload actual observable
   const [currentPayload, setCurrentPayload] = useState<any>(null);
@@ -577,39 +578,57 @@ export default function App() {
   // --- MIC LOGIC ---
   const handleMicrophone = () => {
     if (isRecording) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsRecording(false);
       return;
     }
-    setIsRecording(true);
     
-    // Try to use real Web Speech API if supported
+    // Check for native browser support
     const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
     if (SpeechRecognitionAPI) {
-      const recognition = new SpeechRecognitionAPI();
-      recognition.lang = 'es-ES';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      
-      recognition.start();
-      
-      recognition.onresult = (event: any) => {
-        const speechResult = event.results[0][0].transcript;
-        setInputMessage(prev => prev + (prev.trim() ? " " : "") + speechResult);
+      setIsRecording(true);
+      try {
+        const recognition = new SpeechRecognitionAPI();
+        recognitionRef.current = recognition;
+        recognition.lang = 'es-ES';
+        // Interims can be true to show text typing in real time, but that requires more complex state handling
+        // We'll stick to final for simplicity, or handle interims if needed.
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        
+        recognition.start();
+        
+        recognition.onresult = (event: any) => {
+          const speechResult = event.results[0][0].transcript;
+          setInputMessage(prev => prev + (prev.trim() ? " " : "") + speechResult);
+          setIsRecording(false);
+        };
+        
+        recognition.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsRecording(false);
+          // Fallback to simulation if there is a permission error (e.g. no mic allowed)
+          if (event.error === 'not-allowed') {
+             console.warn("Microphone not allowed, check iframe permissions. Simulating...");
+             simulateSpeech();
+          }
+        };
+        
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+      } catch (err) {
+        console.error("Failed to start speech recognition", err);
         setIsRecording(false);
-      };
-      
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsRecording(false);
-        // Fallback simulate
         simulateSpeech();
-      };
-      
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
+      }
     } else {
-      // Simulation fallback
+      console.warn("Speech API not supported in this browser. Simulating...");
+      // Simulation fallback for unsupported browsers
+      setIsRecording(true);
       simulateSpeech();
     }
   };
