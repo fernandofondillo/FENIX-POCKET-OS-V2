@@ -308,15 +308,15 @@ export default function App() {
         capsula_activa: {
           id: activeCapsule.id,
           system_prompt: activeCapsule.systemPrompt,
-          skills: activeCapsule.skills
+          allowed_skills: activeCapsule.skills
         },
-        activeSkills: installedSkillIds,
+        active_skills: installedSkillIds,
         perfil_identidad: `Carlos | ${identity.profession} | Entrena ${identity.trainingRythmn} | Foco: ${identity.focusGoal} | Restricciones: ${identity.healthConstraints}`,
         contexto_rag_hibrido: {
           historial_usuario: rag.historial_usuario ? "[Cargado de /Diarios]: " + rag.historial_usuario.substring(0, 75) + "..." : "Ninguno",
           conocimiento_experto: rag.conocimiento_experto ? "[Cargado de /Conocimiento_Experto]: " + rag.conocimiento_experto.substring(0, 75) + "..." : "Ninguno"
         },
-        historial_recent: recentHist,
+        historial_reciente: recentHist,
         mensaje_actual: inputMessage || "(Escribiendo...)"
       };
 
@@ -435,9 +435,9 @@ export default function App() {
         id: activeCapsule.id,
         name: activeCapsule.name,
         system_prompt: activeCapsule.systemPrompt,
-        skills: activeCapsule.skills
+        allowed_skills: activeCapsule.skills
       },
-      activeSkills: installedSkills.map(s => s.id),
+      active_skills: installedSkills.map(s => s.id),
       perfil_identidad: identity,
       contexto_rag_hibrido: activeRag,
       push_type: type
@@ -595,13 +595,13 @@ export default function App() {
       capsula_activa: {
         id: activeCapsule.id,
         system_prompt: activeCapsule.systemPrompt,
-        skills: activeCapsule.skills
+        allowed_skills: activeCapsule.skills
       },
-      activeSkills: installedSkillIds,
+      active_skills: installedSkillIds,
       perfil_identidad: `Carlos, ${identity.profession}, entrenamientos: ${identity.trainingRythmn}, meta principal: ${identity.focusGoal}, restricción física médica: ${identity.healthConstraints}`,
       contexto_rag_hibrido: activeRag,
       // Podado estricto: VPS CPU optimization, solo últimos 8
-      historial_recent: messages.slice(-8).filter(m => m.role !== "system").map(m => ({
+      historial_reciente: messages.slice(-8).filter(m => m.role !== "system").map(m => ({
         role: m.role,
         content: m.content
       })),

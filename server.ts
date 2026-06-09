@@ -29,9 +29,10 @@ async function startServer() {
       const {
         user_id,
         capsula_activa,
+        active_skills,
         perfil_identidad,
         contexto_rag_hibrido,
-        historial_recent, // de Dart, serializado como 'historial_recent' en el JSON original
+        historial_reciente,
         mensaje_actual,
       } = req.body;
 
@@ -46,10 +47,10 @@ async function startServer() {
       // Desglosar RAG híbrido
       const userHistoryNotes = contexto_rag_hibrido?.historial_usuario || "Ningún diario o nota personal recuperado en la consulta.";
       const expertEvidence = contexto_rag_hibrido?.conocimiento_experto || "Ninguna base de conocimiento cargada para esta cápsula.";
-      const activeSkills = capsula_activa.skills || [];
+      const authSkills = active_skills || capsula_activa.allowed_skills || [];
 
       // Reconstrucción inteligente de Mensajes Recientes (formato compatible para turnos)
-      const formattedHistory = (historial_recent || []).map((msg: any) => ({
+      const formattedHistory = (historial_reciente || []).map((msg: any) => ({
         role: msg.role === "assistant" ? "model" as const : "user" as const,
         parts: [{ text: msg.content }],
       }));
@@ -92,7 +93,7 @@ ${expertEvidence}
 
       // Configuración de herramientas
       const tools: any[] = [];
-      if (activeSkills.includes("web_search")) {
+      if (authSkills.includes("web_search")) {
         tools.push({ googleSearch: {} });
       }
 
@@ -128,13 +129,13 @@ ${expertEvidence}
       let skillArgs: any = null;
 
       const lowerMessage = mensaje_actual.toLowerCase();
-      if ((lowerMessage.includes("agend") || lowerMessage.includes("program") || lowerMessage.includes("calendario")) && activeSkills.includes("agenda_crear")) {
+      if ((lowerMessage.includes("agend") || lowerMessage.includes("program") || lowerMessage.includes("calendario")) && authSkills.includes("agenda_crear")) {
         skillToCall = "agenda_crear";
         skillArgs = {
           title: capsula_activa.id === "fitness_expert" ? "Entrenamiento Fénix" : "Consulta de Hábito",
           desc: "Auto-programado de manera reactiva por Fénix basado en fatiga o ritmo actual.",
         };
-      } else if ((lowerMessage.includes("notific") || lowerMessage.includes("record") || lowerMessage.includes("avis")) && activeSkills.includes("notificacion_enviar")) {
+      } else if ((lowerMessage.includes("notific") || lowerMessage.includes("record") || lowerMessage.includes("avis")) && authSkills.includes("notificacion_enviar")) {
         skillToCall = "notificacion_enviar";
         skillArgs = {
           body: "Fénix te recuerda: Prioriza la alineación mecánica señalada en tu cápsula de conocimiento.",
@@ -166,6 +167,7 @@ ${expertEvidence}
     try {
       const {
         capsula_activa,
+        active_skills,
         perfil_identidad,
         contexto_rag_hibrido,
         push_type, // "consejo" | "agenda" | "alerta"
@@ -178,7 +180,7 @@ ${expertEvidence}
         return;
       }
 
-      const activeSkills = capsula_activa.skills || [];
+      const authSkills = active_skills || capsula_activa.allowed_skills || [];
       const userHistoryNotes = contexto_rag_hibrido?.historial_usuario || "Ninguna nota de diarios.";
       const expertEvidence = contexto_rag_hibrido?.conocimiento_experto || "Ninguna base de de conocimiento experta.";
       const type = push_type || "consejo";
@@ -193,7 +195,7 @@ ${expertEvidence}
         - Tipo solicitado de Push: "${type.toUpperCase()}"
         - Cápsula remisora actual: "${capsula_activa.name}" (${capsula_activa.roleDescription})
         - Directiva Conductual: "${capsula_activa.system_prompt}"
-        - Herramientas nativas del terminal móvil: ${JSON.stringify(activeSkills)}
+        - Herramientas nativas del terminal móvil: ${JSON.stringify(authSkills)}
         
         PERFIL DE IDENTIDAD SQLite DEL USUARIO:
         ${JSON.stringify(perfil_identidad || "No provisto")}
@@ -208,7 +210,7 @@ ${expertEvidence}
         - El JSON debe tener exactamente las siguientes claves:
           "title": Un título sumamente atractivo y compacto en español (máx. 35 caracteres). Por ejemplo: "⚠️ Alerta Biomecánica", "🥑 Balance Ceto-Sodio", "🧘 Recordatorio Estoico".
           "body": El mensaje push directo, perspicaz y accionable (máx. 110 caracteres). Debe referenciar de forma sutil las dolencias/metas o historiales del usuario y la cápsula activa basándose exclusivamente en el RAG.
-          "skill_to_trigger": La herramienta de sistema a disparar. Elige una de estas: "notificacion_enviar" o "agenda_crear". Si es de tipo "agenda", prefiere "agenda_crear". Si es alerta o consejo, usa "notificacion_enviar". Solo usa lo permitido por las habilidades de la cápsula: ${JSON.stringify(activeSkills)}.
+          "skill_to_trigger": La herramienta de sistema a disparar. Elige una de estas: "notificacion_enviar" o "agenda_crear". Si es de tipo "agenda", prefiere "agenda_crear". Si es alerta o consejo, usa "notificacion_enviar". Solo usa lo permitido por las habilidades de la cápsula: ${JSON.stringify(authSkills)}.
           "skill_args": Un objeto con los parámetros de la skill. Si es "agenda_crear", debe llevar "title" y "desc". Si es "notificacion_enviar", debe llevar "body".
           "reasoning_context": Una breve frase que explique qué parte del RAG Híbrido se usó para construir este consejo.
           
@@ -221,14 +223,16 @@ ${expertEvidence}
 
       let responseJSONText = "";
 
-      // Si tenemos KEY configurada, usamos a Gemini de verdad
+      // Si tenemos KEY configurada, usamos a Gemini de verdad (Simulando USE_CLOUD_FALLBACK=True)
       if (process.env.GEMINI_API_KEY) {
         const response = await ai.models.generateContent({
           model: "gemini-3.5-flash",
           contents: [{ role: "user", parts: [{ text: "Generar notificación push en JSON basado en las instrucciones del sistema." }] }],
           config: {
             systemInstruction: systemInstruction,
-            temperature: 0.85,
+            temperature: 0.3,
+            topP: 0.9,
+            maxOutputTokens: 200,
             responseMimeType: "application/json",
           },
         });
@@ -260,8 +264,8 @@ ${expertEvidence}
             body: hasLumbar 
               ? "Evita flexión lumbar al descender. Bloquea dorsales e inicia con empuje de cadera (Hip Hinge)."
               : "Sincroniza tus series de esfuerzo. Mantener los dorsales activos asegura inmunidad biomecánica.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear") 
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear") 
               ? { title: "Ajuste Biomecánico Fénix", desc: "Monitoreo preventivo del músculo lumbar y cadera." }
               : { body: "Torsión neutral lumbosacra requerida." },
             reasoning_context: "Mapeado heurístico local del diario_fatiga.md y la biomecánica lumbar del RAG sobre Peso Muerto."
@@ -281,8 +285,8 @@ ${expertEvidence}
           parsedPush = {
             title: type === "agenda" ? "⏳ Sesión de Pausa" : "🧘 Foco Estoico",
             body: "Picos de estrés laboral listados. Dedica 10 minutos para discernir qué está bajo tu control absoluto hoy.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear")
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear")
               ? { title: "Introspección Estoica", desc: "10 min de meditación estoica y control de respiración." }
               : { body: "Retoma control somático con respiración profunda." },
             reasoning_context: "Inyectado del diario de atención y literatura zen-estoica Aurelio para amortiguar el cortisol laboral."
@@ -291,8 +295,8 @@ ${expertEvidence}
           parsedPush = {
             title: type === "agenda" ? "🗓️ Rutina Geriátrica" : "🧓 Apoyo Continuo",
             body: "Recuerda revisar la presión arterial y asegurar la ingesta de líquidos constantes del usuario mayor.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear")
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear")
               ? { title: "Revisar Medicación", desc: "Monitoreo continuo" }
               : { body: "Es momento de ofrecer un pequeño vaso de agua." },
             reasoning_context: "Generado en base a los protocolos locales de cuidado geriátrico."
@@ -301,8 +305,8 @@ ${expertEvidence}
           parsedPush = {
             title: type === "agenda" ? "⏳ Terapia Térmica" : "🧬 Optimización NAD+",
             body: "Iniciemos la regulación neurobiológica con protocolo de contraste térmico para disparar dopamina.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear")
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear")
               ? { title: "Baño Hielo / Sauna", desc: "Protocolo de HSPs y dopamina" }
               : { body: "Revisa exposición a luz matutina." },
             reasoning_context: "Consultado a base local criptográfica sobre biohacking y ritmo circadiano."
@@ -311,8 +315,8 @@ ${expertEvidence}
           parsedPush = {
             title: type === "agenda" ? "📅 Time-Boxing" : "💼 Deep Work",
             body: "Inicia el bloqueo de 50 minutos de Deep Work absoluto (Pomodoro). Desactiva de inmediato redes y atiende solo la tarea crítica actual.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear")
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear")
               ? { title: "Sesión Deep Work", desc: "50 min de trabajo profundo" }
               : { body: "Aplica la regla de los 2 minutos, despeja el inbox." },
             reasoning_context: "Filtrando heurísticamente los esquemas de priorización de PMOs y GTD."
@@ -321,8 +325,8 @@ ${expertEvidence}
           parsedPush = {
             title: type === "agenda" ? "🗓️ Enlace Síncrono" : "👋 Base Fénix",
             body: "He notado registros nuevos en tus diarios. Recomiendo una revisión multi-disciplinar conmigo.",
-            skill_to_trigger: type === "agenda" && activeSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
-            skill_args: type === "agenda" && activeSkills.includes("agenda_crear")
+            skill_to_trigger: type === "agenda" && authSkills.includes("agenda_crear") ? "agenda_crear" : "notificacion_enviar",
+            skill_args: type === "agenda" && authSkills.includes("agenda_crear")
               ? { title: "Revisión Fénix", desc: "Revisión multidisciplinar de diarios." }
               : { body: "Estoy disponible para asistirte con todos los expertos." },
             reasoning_context: "Mapeado heurístico base del histórico general del usuario."
