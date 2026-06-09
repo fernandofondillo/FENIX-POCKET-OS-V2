@@ -76,11 +76,15 @@ La coreografía del flujo de datos garantiza que el VPS actúe exclusivamente co
 
 La retención cognitiva del Agente está fraccionada en 3 niveles biológicos locales:
 
-1.  **Memoria Inmediata (RAM Móvil):** La ventana de trabajo. Limitada a los **últimos 8 mensajes** del chat activo. Limpia el ruido, conserva contexto rápido e impide saturar el límite de tokens de lectura en la CPU remota.
-2.  **Memoria de Identidad (SQLite):** Un mapa relacional y evolutivo. Fénix deduce variaciones (ej. "Me duele la espalda esta semana") en el VPS mediante un tag JSON `<perfil_update>`. El móvil extrae esta llave y muta su registro local en SQLite. Mantiene también las consolidaciones que ocurren durante un proceso CRON cada noche ("Rutina de Sueño" local).
+1.  **Memoria Inmediata (RAM Móvil):** La ventana de trabajo. Limitada rígidamente a los **últimos 8 mensajes** del chat activo. Limpia el ruido, conserva contexto rápido e impide saturar el límite de tokens de lectura en la CPU remota.
+2.  **Memoria de Identidad (SQLite):** Un mapa relacional y evolutivo. Fénix deduce variaciones (ej. "Me duele la espalda esta semana") en el VPS mediante un tag JSON `<perfil_update>`. El móvil extrae esta llave y muta su registro local en SQLite.
 3.  **Memoria a Largo Plazo (Nano-Obsidian Vault):** Archivos `.md` físicos cifrados en el dispositivo. Divididos en:
-    - `/Diarios`: Reflexiones íntimas y logs operativos creados por el usuario o el agente.
-    - `/Conocimiento_Experto`: Manuales técnicos (ej. Literatura científica sobre ayuno intermitente, protocolos estoicos) atados a una cápsula específica.
+    - `/Diarios`: Reflexiones íntimas y logs operativos.
+    - `/Conocimiento_Experto`: Manuales técnicos atados a una cápsula específica.
+
+### La Consolidación Nocturna (Subconsciente Analítico)
+
+Fénix incorpora un endpoint dedicado (`/api/v1/consolidate`) inspirado en la consolidación de la memoria humana durante el sueño. Se envía el historial completo del día para extraer un resumen estructurado, detectar el estado de ánimo, formular alertas preventivas para el día siguiente, y extraer `nuevos_datos_perfil` en formato JSON para inyectar directamente en SQLite, generando un nuevo fichero `.md` en la bóveda de diarios locales.
 
 ---
 
