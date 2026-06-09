@@ -1,0 +1,8 @@
+{
+  "name": "Fenix Sandbox",
+  "description": "Live interactive simulator and complete production code repository for the Fenix Sovereign AI Life Agent architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
