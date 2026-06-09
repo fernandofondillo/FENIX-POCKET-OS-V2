@@ -32,7 +32,9 @@ import {
   Speaker,
   Globe,
   HardDrive,
-  AlertTriangle
+  AlertTriangle,
+  Mic,
+  MicOff
 } from "lucide-react";
 
 import { capsules, obsidianFiles } from "./data/vaultData";
@@ -123,6 +125,7 @@ export default function App() {
   ]);
   const [inputMessage, setInputMessage] = useState<string>("");
   const [isProcessingChat, setIsProcessingChat] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
 
   // Payload actual observable
   const [currentPayload, setCurrentPayload] = useState<any>(null);
@@ -196,6 +199,8 @@ export default function App() {
     { id: "vision_document", name: "Escáner Óptico OCR", category: "Visión OCR", description: "Extrae analíticas de fotos (ej. analíticas de sangre o diarios fitness).", installed: false, icon: "Eye" },
     { id: "read_db", name: "Nativo SQL Sinc", category: "Mantenimiento", description: "Ejecución de sincronización offline First en Local SQLite.", installed: false, icon: "Database" },
     { id: "web_search", name: "Búsqueda Web Avanzada", category: "Nube / API", description: "Realiza búsquedas semánticas y en tiempo real en internet.", installed: false, icon: "Globe" },
+    { id: "gmail_read", name: "Google Workspace - Gmail", category: "Nube / API (Soberano)", description: "OAuth2 Sync: Lectura, resumen local y estructuración de correos.", installed: false, icon: "CodeXml" },
+    { id: "calendar_manage", name: "Google Workspace - Calendar", category: "Nube / API (Soberano)", description: "OAuth2 Sync: Gestión y orquestación de reuniones/agenda.", installed: false, icon: "Calendar" },
   ];
 
   const [availableSkills, setAvailableSkills] = useState<any[]>(availableSkillsList);
@@ -567,6 +572,53 @@ export default function App() {
 
     // Descartar visual de notch
     setActivePush(null);
+  };
+
+  // --- MIC LOGIC ---
+  const handleMicrophone = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      return;
+    }
+    setIsRecording(true);
+    
+    // Try to use real Web Speech API if supported
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+      const recognition = new SpeechRecognitionAPI();
+      recognition.lang = 'es-ES';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      
+      recognition.start();
+      
+      recognition.onresult = (event: any) => {
+        const speechResult = event.results[0][0].transcript;
+        setInputMessage(prev => prev + (prev.trim() ? " " : "") + speechResult);
+        setIsRecording(false);
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error", event.error);
+        setIsRecording(false);
+        // Fallback simulate
+        simulateSpeech();
+      };
+      
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+    } else {
+      // Simulation fallback
+      simulateSpeech();
+    }
+  };
+
+  const simulateSpeech = () => {
+    setTimeout(() => {
+      setInputMessage(prev => prev + (prev.trim() ? " " : "") + "¿Me podrías leer los últimos correos del trabajo y agendar esa reunión?");
+      setIsRecording(false);
+    }, 3000);
   };
 
   // --- SEND CHAT TO REAL SERVER ENDPOINT ---
@@ -997,11 +1049,19 @@ export default function App() {
 
               {/* CAJA DE INPUT (SIMULADA FLUTTER NATIVO) */}
               <form onSubmit={handleSendMessage} className="p-3 bg-[#0C0C0C] border-t border-[#2A2A2A] flex gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={handleMicrophone}
+                  disabled={isProcessingChat}
+                  className={`p-2.5 rounded-xl transition-all flex items-center justify-center cursor-pointer border ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50 animate-pulse' : 'bg-[#141414] text-[#888] border-[#2A2A2A] hover:text-[#C5A059] hover:bg-[#1C1C1C]'}`}
+                >
+                  {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Pregunta o describe molestias..."
+                  placeholder="Pregunta o describe síntomas..."
                   disabled={isProcessingChat}
                   className="flex-1 bg-[#141414] placeholder:text-[#555] text-[#E0D8D0] rounded-xl px-3.5 py-2.5 text-xs border border-[#2A2A2A] focus:outline-none focus:border-[#C5A059]/40 disabled:opacity-50 font-sans"
                 />
