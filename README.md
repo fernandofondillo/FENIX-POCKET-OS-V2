@@ -53,20 +53,17 @@ El dispositivo móvil contiene toda la identidad y la memoria relacional, y asum
 ### Frontend Multiplataforma (Dart / Flutter)
 
 - **Identidad y Vectorización Local**:
-  - **SQLite** se emplea estrictamente para almacenar el Perfil Evolutivo y la tabla de métricas (Constantes vitales, recordatorios).
-  - **ObjectBox** complementado con **sqlite-vec** ofrece un RAG híbrido nativo sin depender de APIs cloud. Corre mini-modelos de embeddings en `Isolates` (Treads de Dart) localmente.
-- **Seguridad y Encriptación en Disco:** Se utiliza la librería `encrypt` para aplicar **AES-256** bajo un Pair-Key único emitido al iniciar el dispositivo.
+  - **SQLite (\`lib/services/perfil_db_service.dart\`)** se emplea estrictamente para almacenar el Perfil Evolutivo y la tabla de métricas (Patrón EAV) procesando Json dinámico al vuelo (Upsert).
+  - **ObjectBox / sqlite-vec** ofrece un RAG híbrido nativo sin depender de APIs cloud. Corre mini-modelos de embeddings en `Isolates` localmente.
+- **Seguridad y Encriptación en Disco:** Se utiliza la librería `encrypt` (\`lib/services/secure_storage_service.dart\`) para aplicar **AES-256** bajo un Pair-Key nativo del Secure Enclave.
 
 ### Backend Concurrente (FastAPI / Python 3.11+)
 
-- **Gestión Asíncrona:** Alojado en un VPS Hostinger (16GB RAM / Solo CPU). FastAPI maneja de forma asíncrona la concurrencia delegando al hilo principal I/O-bound e instanciando un pool de subprocesos limitados.
-- **Validación Estricta:** `Pydantic v2` garantiza que los contratos JSON `snake_case` coincidan al bit.
-- **Motor Inferencial Intercambiable:** Se corre **Ollama (Qwen 2.5 7B Instruct cuantizado en Q4_K_M)** que permite una inferencia ultrarrápida. Si hay saturación, un flag `USE_CLOUD_FALLBACK=True` redirecciona la carga térmica a los SDKs de **Gemini** o OpenAI manteniendo idéntica compatibilidad en el payload de las llamadas locales.
+- **Gestión Asíncrona (\`app/main.py\`):** Alojado en un VPS Hostinger (16GB RAM). FastAPI maneja I/O de manera stateless. Cero retenciones post-respuesta de la memoria para proteger la seguridad.
+- **Validación Estricta (\`app/schemas/chat_schema.py\`):** `Pydantic v2` garantiza que los contratos JSON `snake_case` coincidan al milímetro entre Flutter y FastAPI.
+- **Motor Inferencial Intercambiable (\`app/services/inference_router.py\`):** Se corre **Ollama (Qwen 2.5 7B Instruct)** u orquestador Cloud. Inyecta JSON XML `<perfil_update>` en base a inferencias al vuelo.
 
-\_(Nota: La base del código incorpora ahora las implementaciones técnicas reales para producción en arquitecturas reales:
-
-- \`lib/services/secure_storage_service.dart\`: Encargado de la persistencia at-rest AES-256 en el móvil (Nano-Obsidian).
-- \`app/services/inference*router.py\`: El orquestador backend asíncrono para FastAPI con soporte agnóstico Ollama/Gemini y manejo de Cloud Fallback).*
+\_(Nota: La base de datos incluye la arquitectura Base Real para Producción con tipado Pydantic y un manejador Flutter estricto).\*
 
 ---
 

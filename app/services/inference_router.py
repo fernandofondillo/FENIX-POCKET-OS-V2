@@ -95,7 +95,7 @@ class InferenceRouter:
         Interpreta posibles inyecciones JSON para la mutación del Perfil Evolutivo en el móvil.
         Intercepta los Tags <perfil_update> antes de derivar la mensajería del chat.
         """
-        extracted_updates = {}
+        extracted_updates = []
         clean_presentation_text = raw_text
         
         # Buscar Tags heurísticos XML incrustados 
@@ -105,7 +105,11 @@ class InferenceRouter:
             # Purgar escapes Markdown 
             json_str = re.sub(r'```json\n|\n```|```', '', json_str)
             try:
-                extracted_updates = json.loads(json_str)
+                parsed = json.loads(json_str)
+                if isinstance(parsed, list):
+                    extracted_updates = parsed
+                elif isinstance(parsed, dict):
+                    extracted_updates = [parsed]
                 logger.info(f"Function Calling Exitoso: Se interceptaron mutaciones de Perfil SQLite.")
             except json.JSONDecodeError as e:
                 logger.error(f"Function Calling Fallido (JSON Crítico Corrupto): {e}")
@@ -115,7 +119,7 @@ class InferenceRouter:
         
         return {
             "view_text": clean_presentation_text,
-            "sqlite_mutations": extracted_updates
+            "sqlite_mutations_str": json.dumps(extracted_updates)
         }
 
     async def execute_inferential_cycle(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -140,6 +144,9 @@ class InferenceRouter:
         
         RAG Semántico extraído en dispositivo (Límite 400w):
         {json.dumps(rag_payload)}
+        
+        SISTEMA DE MUTACIÓN: Si detectas que el usuario menciona una nueva preferencia, métrica física o condición técnica, inserta en tu respuesta un bloque XML así para que el SO del móvil lo extraiga, con formato lista de dicts:
+        <perfil_update>[{{"categoria": "rango", "clave": "valor", "valor": "dato"}}]</perfil_update>
         """
 
         # Preparación de Vector compatible con Ollama local
@@ -179,6 +186,6 @@ class InferenceRouter:
         return {
             "status": "success" if processing_engine != "system_failure" else "interrupted",
             "assistant_response": processed_data["view_text"],
-            "sqlite_mutations": processed_data["sqlite_mutations"],
+            "perfil_update": processed_data["sqlite_mutations_str"],
             "inferenced_by": processing_engine
         }
