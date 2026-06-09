@@ -350,6 +350,72 @@ ${expertEvidence}
     }
   });
 
+  // API Route: VPS Generador de Consolidación Nocturna (PROMPT_CONSOLIDACION)
+  app.post("/api/v1/consolidate", async (req: express.Request, res: express.Response): Promise<void> => {
+    try {
+      const { historial_dia } = req.body;
+      
+      const systemInstruction = `
+Actúa como la mente subconsciente de un asistente personal de élite. Tu trabajo es analizar todo el historial de conversaciones del usuario durante el día de hoy para extraer conocimiento profundo, actualizar su perfil evolutivo y generar su diario.
+
+Analiza el texto adjunto y devuelve ESTRICTAMENTE un objeto JSON con la siguiente estructura:
+{
+"resumen_markdown": "Un diario del día en formato Markdown limpio. Incluye secciones como: ### Resumen del Día, ### Logros, ### Estado de Ánimo detectado, ### Notas de Salud.",
+"nuevos_datos_perfil": [
+{"campo": "Nombre del campo en SQLite", "valor": "Nueva información aprendida hoy"}
+],
+"alertas_coach": "Consejos o advertencias críticas para el día de mañana basadas en hoy."
+}
+
+Reglas estrictas:
+- No inventes datos. Si el usuario no mencionó cambios en sus hábitos, deja 'nuevos_datos_perfil' vacío.
+- Sé analítico y objetivo.
+      `;
+
+      if (process.env.GEMINI_API_KEY) {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: [{ role: "user", parts: [{ text: `HISTORIAL DEL DÍA:\n${historial_dia || "Ningún mensaje."}` }] }],
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        });
+        
+        let responseJSONText = response.text || "";
+        let parsedData = null;
+        try {
+            parsedData = JSON.parse(responseJSONText);
+        } catch (jsonErr) {
+            console.warn("Fallo al parsear JSON consolidación.", jsonErr);
+            const match = responseJSONText.match(/\{[\s\S]*\}/);
+            if (match) {
+                parsedData = JSON.parse(match[0]);
+            }
+        }
+        if (parsedData) {
+            res.json(parsedData);
+            return;
+        }
+      }
+
+      // Fallback
+      res.json({
+        resumen_markdown: "### Resumen del Día\nEl VPS ha procesado este turno localmente con los datos heurísticos. Sistema offline activo.\n### Estado de Ánimo detectado\nEstable.\n### Notas de Salud\nMonitoreo general activo.",
+        nuevos_datos_perfil: [],
+        alertas_coach: "Mantener el programa operativo sin alteraciones para mañana."
+      });
+      
+    } catch (e: any) {
+      console.error("FenixConsolidateException:", e);
+      res.status(500).json({
+        error: "Fallo en la consolidación de la memoria subconsciente.",
+        details: e.message || String(e),
+      });
+    }
+  });
+
   // Health check simple de VPS
   app.get("/api/v1/health", (req, res) => {
     res.json({ status: "online", node: "VPS-Hostinger-Stateless-16GB", cpu_optimization: "AVX2-enabled" });

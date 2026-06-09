@@ -355,6 +355,75 @@ export default function App() {
     }, 1200); // laser decrypt delay
   };
 
+  // --- TRIGGER CONSOLIDATE MEMORY ---
+  const [isConsolidating, setIsConsolidating] = useState<boolean>(false);
+  const [consolidationResult, setConsolidationResult] = useState<any>(null);
+
+  const triggerConsolidation = async () => {
+    if (isConsolidating) return;
+    setIsConsolidating(true);
+    setConsolidationResult(null);
+    setVpsLogs(prev => [
+      ...prev,
+      `[POST /consolidate] ${new Date().toISOString()} - Iniciando consolidación subconsciente`,
+      ` -> Extrayendo historial del chat del día...`
+    ]);
+
+    const historial_str = messages.filter(m => m.role !== 'system').map(m => `[${m.timestamp}] ${m.role.toUpperCase()}: ${m.content}`).join("\n");
+
+    try {
+      const response = await fetch("/api/v1/consolidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ historial_dia: historial_str })
+      });
+
+      if (!response.ok) throw new Error(`Status: ${response.status}`);
+      const data = await response.json();
+
+      if (data.nuevos_datos_perfil && data.nuevos_datos_perfil.length > 0) {
+        let newUpdates: any = {};
+        data.nuevos_datos_perfil.forEach((d: any) => { newUpdates[d.campo] = d.valor; });
+        setIdentity(prev => ({ ...prev, ...newUpdates }));
+      }
+
+      setConsolidationResult({
+        markdown: data.resumen_markdown,
+        alertas: data.alertas_coach,
+        changes: data.nuevos_datos_perfil
+      });
+
+      setVpsLogs(prev => [
+        ...prev,
+        ` -> Éxito en consolidación. Archivos generados y perfil actualizado.`
+      ]);
+
+      // Generar nuevo archivo en Nano-Obsidian
+      const timestamp = Date.now();
+      const newDocId = "diario_dia_" + timestamp;
+      const newFile: ObsidianFile = {
+        id: newDocId,
+        filename: `Diario_Consolidado_${new Date().toLocaleDateString('es-ES').replace(/\//g,'-')}.md`,
+        category: "personal",
+        chapter: "/Diarios/Registro_Automatico",
+        encryptedContent: "U01GM1RDM086RDI0UklPX0NVTlNP=",
+        decryptedContent: data.resumen_markdown + "\n\n---\n\n**Alertas Coach:** " + data.alertas_coach
+      };
+      setLocalVaultFiles(prev => [newFile, ...prev]);
+
+    } catch (err) {
+      console.error(err);
+      setVpsLogs(prev => [...prev, `[FALLO] Consolidación nocturna falló.`]);
+      setConsolidationResult({
+        markdown: "### Error\nNo se pudo ejecutar la inferencia remota para la consolidación.",
+        changes: [],
+        alertas: ""
+      });
+    } finally {
+      setIsConsolidating(false);
+    }
+  };
+
   // --- TRIGGER LIVE PUSH NOTIFICATION (VPS + GEMINI) ---
   const triggerLivePushNotification = async (type: "consejo" | "agenda" | "alerta") => {
     if (isGeneratingPush) return;
@@ -1152,6 +1221,40 @@ export default function App() {
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />
                     </div>
+                  </div>
+
+                  {/* CONSOLIDACIÓN NOCTURNA */}
+                  <div className="mt-6 pt-4 border-t border-[#2A2A2A]">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold font-mono text-[#E0D8D0] flex items-center gap-2">
+                          <Activity className="w-3.5 h-3.5 text-purple-400" />
+                          Consolidación Nocturna (Aprendizaje)
+                        </h4>
+                        <p className="text-[10px] text-[#888] leading-tight font-sans mt-1">
+                          Envía el historial de hoy al subconsciente para extraer patrones, actualizar el perfil e inyectar un nuevo diario.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={triggerConsolidation} 
+                        disabled={isConsolidating}
+                        className="bg-[#141414] hover:bg-purple-900/20 text-[#E0D8D0] border border-[#2A2A2A] hover:border-purple-500/50 px-4 py-2 rounded-xl text-[11px] font-bold transition-all disabled:opacity-50"
+                      >
+                        {isConsolidating ? "Procesando..." : "Ejecutar Consolidación"}
+                      </button>
+                    </div>
+                    {consolidationResult && (
+                      <div className="mt-4 bg-[#0A0A0A] border border-purple-500/20 rounded-xl p-3 font-mono text-[10px]">
+                        <h5 className="text-purple-400 font-bold mb-2">Resultado Empaquetado</h5>
+                        <div className="space-y-2 text-[#E0D8D0]">
+                          <div><strong className="text-[#888]">Nuevos Datos Perfil:</strong> {consolidationResult.changes?.length > 0 ? JSON.stringify(consolidationResult.changes) : "Ninguno"}</div>
+                          <div><strong className="text-[#888]">Alerta Coach:</strong> {consolidationResult.alertas}</div>
+                          <div className="mt-2 p-2 bg-[#141414] rounded border border-[#2A2A2A] text-[9px] max-h-32 overflow-y-auto whitespace-pre-wrap">
+                            {consolidationResult.markdown}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
