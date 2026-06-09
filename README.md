@@ -113,6 +113,14 @@ Contrato arquitectural representativo (`fitness_coach.json`). Estandarizado en e
 }
 ```
 
+### 5.1 Interfaz Acústica y Conectividad con el Ecosistema Google (Workspace)
+
+Para proveer un puente holístico entre el entorno Fénix y el ecosistema cerrado:
+
+1. **Interfaz de Voz Transparente (Speech-to-Text):** A.G.O.S. posee acceso nativo al micrófono en el chat del móvil. Lo que el usuario dicte se transcribe al vuelo de voz a texto y se inyecta directamente en la bandeja de envío, reduciendo la fricción conversacional en situaciones operativas de manos libres.
+2. **Integración OAuth con Google Workspace:** A través de autorizaciones soberanas OAuth2, el Agente puede conectar e interoperar de forma asíncrona con los dominios de Google (Gmail, Calendar, Docs, Sheets).
+   - **Ejemplo Práctico:** Puedes solicitarle en el chat _"Léeme los últimos correos del trabajo y saca unas viñetas"_, y la aplicación se validará mediante el nodo de las cápsulas ejecutivas que posean habilitada la skill `gmail_read` o `calendar_manage`, para consolidar las operaciones manteniendo plena coherencia contextual.
+
 ---
 
 ## 6. ARQUITECTURA DEL PERFIL EVOLUTIVO (SQLite EAV)
