@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "ai.quyriux.fenix_pocket_os"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     // A.G.O.S. V2: Cargar configuración de firma
     def keystoreProperties = new Properties()
@@ -29,18 +29,13 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        coreLibraryDesugaringEnabled true
+        
     }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
-    // JVM Toolchain: fuerza a TODAS las tareas (Java + Kotlin) a usar 17
-    // Resuelve "Inconsistent JVM-target compatibility" en tflite_flutter
-    kotlin {
-        jvmToolchain(17)
-    }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
@@ -61,6 +56,10 @@ android {
             shrinkResources false
         }
     }
+}
+
+dependencies {
+    // No usamos coreLibraryDesugaring (tflite_flutter no lo requiere con NDK 27)
 }
 
 flutter {
