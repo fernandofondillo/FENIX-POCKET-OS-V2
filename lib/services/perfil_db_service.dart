@@ -32,4 +32,45 @@ class PerfilDbService {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
+  /// Lee todos los EAV con categoria='identidad' y los retorna como Map<clave, valor>.
+  /// Usado por el WelcomeScreen para construir el `perfilIdentidad` denso del payload.
+  Future<Map<String, String>> obtenerIdentidad() async {
+    if (_db == null) await initDb();
+    final rows = await _db!.query(
+      'eav_data',
+      columns: ['clave', 'valor'],
+      where: 'categoria = ?',
+      whereArgs: ['identidad'],
+    );
+    return {
+      for (final r in rows)
+        r['clave'] as String: r['valor'] as String,
+    };
+  }
+
+  /// Lee TODOS los EAV (para `/api/v1/consolidate`).
+  Future<Map<String, String>> obtenerTodo() async {
+    if (_db == null) await initDb();
+    final rows = await _db!.query('eav_data', columns: ['clave', 'valor']);
+    return {
+      for (final r in rows)
+        r['clave'] as String: r['valor'] as String,
+    };
+  }
+
+  /// Lee EAV filtrando por categoría.
+  Future<Map<String, String>> obtenerPorCategoria(String categoria) async {
+    if (_db == null) await initDb();
+    final rows = await _db!.query(
+      'eav_data',
+      columns: ['clave', 'valor'],
+      where: 'categoria = ?',
+      whereArgs: [categoria],
+    );
+    return {
+      for (final r in rows)
+        r['clave'] as String: r['valor'] as String,
+    };
+  }
 }

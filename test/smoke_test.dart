@@ -21,14 +21,14 @@ void main() {
       final memory = MemoryService();
       
       // Simulamos enviar 12 mensajes
-      for(int i = 0; i < 12; i++) {
-        memory.agregar_mensaje_inmediato('user', 'Mensaje de prueba número \$i');
+      for (int i = 0; i < 12; i++) {
+        memory.agregar_mensaje_inmediato('user', 'Mensaje de prueba número $i');
       }
-      
+
       // Comprobamos la restricción FIFO (Solo pueden quedar 8)
       final cache_reciente = memory.obtener_memoria_inmediata();
       expect(cache_reciente.length, 8);
-      
+
       // Comprobamos que retuvo del índice 4 al 11 (desechando del 0 al 3)
       expect(cache_reciente.first['content'], 'Mensaje de prueba número 4');
       expect(cache_reciente.last['content'], 'Mensaje de prueba número 11');

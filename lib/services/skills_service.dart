@@ -56,7 +56,7 @@ class SkillsService {
       } else {
          throw Exception("Rotura TCP/HTTP. Código Base: \${response.statusCode}");
       }
-    } on DioException catch (e) {
+    } on DioException {
       _logger.e("[SKILLS_SERVICE_ERROR] Dio Error interceptable: \${e.message}");
       rethrow;
     }
