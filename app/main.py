@@ -1,135 +1,163 @@
 import re
 import json
 import gc
-from fastapi import FastAPI, HTTPException
+import uuid
+import asyncio
+from fastapi import FastAPI, HTTPException, status
+from pydantic import BaseModel
+from typing import Dict, Any, Optional
+
 from app.schemas.chat_schema import ChatRequest, ChatResponse, PerfilUpdateItem
 from app.services.inference_router import InferenceRouter
 
-# La API opera de manera concurrente con Uvicorn bajo el protocolo Stateless.
-# Se instancia el Orquestador maestro Agnóstico.
-app = FastAPI(title="A.G.O.S. / Fénix", description="Stateless Inference Subconscious Server")
-router = InferenceRouter()
+from arq import create_pool
+from arq.connections import RedisSettings
 
-@app.post("/api/v1/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+# Configuración de Conexión a Redis para Arq
+REDIS_SETTINGS = RedisSettings(host='localhost', port=6379)
+
+app = FastAPI(title="A.G.O.S. / Fénix", description="Stateless Inference Subconscious Server - Event Driven Pipeline")
+
+class TaskResponse(BaseModel):
+    status: str
+    task_id: str
+
+class TaskStatusResponse(BaseModel):
+    status: str
+    result: Optional[ChatResponse] = None
+
+# Dependencia global de Redis Pool
+@app.on_event("startup")
+async def startup():
+    app.state.redis = await create_pool(REDIS_SETTINGS)
+
+# Worker Function que consumirá la cola asíncrona de Redis
+async def process_inference_task(ctx, task_id: str, payload: dict):
     """
-    Recibe el payload ultra-denso (snake_case) desde la bóveda móvil.
-    Delega de inmediato la inferencia al motor local (Ollama CPU) o la Nube (Gemini)
-    y luego descarta agresivamente todo rastro de los objetos subyacentes,
-    asegurando Soberanía Absoluta en un esquema Multiusuario.
+    Función Worker de Arq.
+    Recibe el payload ultra-denso (snake_case) desde la bóveda móvil, encapsulado en la cola de Redis.
+    Delega la inferencia al motor local (Ollama CPU) o la Nube (Gemini) a su propio ritmo.
+    Guarda el resultado en caché (Redis) y limpia agresivamente la RAM.
     """
-    payload = None
-    result = None
-    raw_response = None
-    
     try:
-        # Cast Pydantic -> Dict para ruteo
-        payload = request.model_dump()
+        print(f"[WORKER] Procesando tarea {task_id} para el usuario: {payload.get('user_id', 'Anónimo')}")
         
-        # Segmentación Multi-Usuario: Log interno visible solo en la consola del VPS
-        print(f"[INFERENCIA] Procesando ráfaga cognitiva efímera para el usuario: {payload.get('user_id', 'Anónimo')}")
-        
-        # El router ejecuta inferencia. Los límites de tokens agresivos están configurados
-        # en InferenceRouter (max_tokens=250), así minimizamos uso de RAM e hilos zombis.
+        router = InferenceRouter()
         result = await router.execute_inferential_cycle(payload)
         
         raw_response = result.get("assistant_response", "")
         perfil_updates = []
         
         # Módulo de Extracción Regex de Mutaciones SQLite
-        # Buscamos de manera eficiente la etiqueta <perfil_update> a lo largo de la respuesta cruda.
         match = re.search(r'<perfil_update>(.*?)</perfil_update>', raw_response, re.DOTALL)
         if match:
             json_str = match.group(1).strip()
-            # Limpiamos bloques markdown erráticos del modelo generativo
             json_str = re.sub(r'```json\n|\n```|```', '', json_str)
             try:
                 parsed = json.loads(json_str)
-                # Validamos y transmutamos a nuestro modelo intermedio PerfilUpdateItem (snake_case)
                 if isinstance(parsed, list):
-                    perfil_updates = [PerfilUpdateItem(**item) for item in parsed]
+                    perfil_updates = [PerfilUpdateItem(**item).model_dump() for item in parsed]
                 elif isinstance(parsed, dict):
-                    perfil_updates = [PerfilUpdateItem(**parsed)]
+                    perfil_updates = [PerfilUpdateItem(**parsed).model_dump()]
             except Exception as parsing_error:
-                print(f"Error procesando json estructurado EAV: {parsing_error}")
+                print(f"[WORKER] Error procesando json estructurado EAV: {parsing_error}")
             
-            # Sanitizamos (borramos) las etiquetas estructurales de la respuesta final del usuario
-            # para mantener la limpieza visual en el frontend interactivo de Flutter.
             raw_response = re.sub(r'<perfil_update>.*?</perfil_update>', '', raw_response, flags=re.DOTALL).strip()
         
-        # Instanciamos la respuesta que devolvemos al dispositivo móvil
-        response_data = ChatResponse(
-            status=result["status"],
-            assistant_response=raw_response,
-            perfil_update=perfil_updates,
-            inferenced_by=result["inferenced_by"]
-        )
+        response_data = {
+            "status": result.get("status", "success"),
+            "assistant_response": raw_response,
+            "perfil_update": perfil_updates,
+            "inferenced_by": result.get("inferenced_by", "Ollama 7B")
+        }
+        
+        # Almacenamos el resultado en Redis usando la clave task_id (Expira en 1 hora por seguridad Zero-Knowledge)
+        redis = await create_pool(REDIS_SETTINGS)
+        await redis.setex(f"fenix_task_result:{task_id}", 3600, json.dumps(response_data))
+        
+        print(f"[WORKER] Tarea {task_id} procesada exitosamente y guardada en caché.")
         return response_data
 
     except Exception as e:
-        # Prevención de exposición de stack-traces sensibles del motor
-        raise HTTPException(status_code=500, detail=str(e))
-        
+        print(f"[WORKER ERROR] Tarea {task_id} falló: {str(e)}")
+        redis = await create_pool(REDIS_SETTINGS)
+        error_data = {"status": "error", "assistant_response": f"Error de inferencia: {str(e)}", "perfil_update": [], "inferenced_by": "SystemError"}
+        await redis.setex(f"fenix_task_result:{task_id}", 3600, json.dumps(error_data))
+    
     finally:
-        # HIGIENE DE LA MEMORIA RAM (CPU Multi-Usuario)
-        # Libera forzosamente tensores huérfanos de Python, el objeto `request` con
-        # información personal y datos de procesamiento temporal de la respuesta generativa.
-        # Garantizamos un VPS sin memoria residual de usuario tras la evaluación.
-        del request
+        # HIGIENE ABSOLUTA DE MEMORIA
         del payload
-        del result
-        del raw_response
         gc.collect()
 
+# Definición del Worker de Arq para lanzarse vía CLI
+class WorkerSettings:
+    functions = [process_inference_task]
+    redis_settings = REDIS_SETTINGS
+    max_jobs = 2  # Hard-limit estricto para no ahogar la concurrencia de Ollama en el VPS 
+
+@app.post("/api/v1/chat", response_model=TaskResponse, status_code=status.HTTP_202_ACCEPTED)
+async def chat_endpoint(request: ChatRequest):
+    """
+    Endpoint Ingestor No-Bloqueante (Event-Driven).
+    Recibe la ráfaga cognitiva efímera del móvil y la encola instantáneamente en Redis.
+    """
+    try:
+        payload = request.model_dump()
+        task_id = str(uuid.uuid4())
+        
+        print(f"[INGEST ORCHESTRATOR] Encolando petición multiusuario para {payload.get('user_id', 'Anónimo')}")
+        
+        await app.state.redis.enqueue_job('process_inference_task', task_id, payload)
+        return TaskResponse(status="queued", task_id=task_id)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error encolando tarea de inferencia en la matriz de Redis")
+    finally:
+        del request
+        gc.collect()
+
+@app.get("/api/v1/task/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str):
+    """
+    Endpoint de Long-Polling rápido (Alta Frecuencia).
+    Comprueba si el Worker de Arq ha finalizado de forma asíncrona.
+    """
+    try:
+        redis = app.state.redis
+        result_json = await redis.get(f"fenix_task_result:{task_id}")
+        
+        if result_json:
+            # Result retrieved, process and destroy from memory (Zero-Knowledge)
+            data = json.loads(result_json.decode('utf-8'))
+            await redis.delete(f"fenix_task_result:{task_id}")
+            
+            return TaskStatusResponse(
+                status="completed",
+                result=ChatResponse(**data)
+            )
+        else:
+            # Tarea aún en cola o procesándose por Ollama/Gemini
+            return TaskStatusResponse(status="processing", result=None)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # =====================================================================
-# RUNBOOK TÉCNICO DE DESPLIEGUE PARA HERMES AGENT
+# RUNBOOK TÉCNICO DE DESPLIEGUE EVENT-DRIVEN (A.G.O.S)
 # =====================================================================
 """
-Hermes Agent: Procesa y ejecuta el siguiente manifiesto en el VPS Hostinger (Ubuntu/Debian)
-para configurar Caddy, FastAPI y aislar el entorno operativo.
+Hermes Agent: El Ingestion Pipeline ha sido actualizado a Eventos Asíncronos vía Redis.
 
-1. CONFIGURACIÓN DEL ENTORNO (.env)
-   Crea un archivo oculto .env en la raíz del proyecto con la válvula Cloud Fallback:
-   $ echo "GEMINI_API_KEY=tu_clave_secreta" >> .env
-   $ echo "USE_CLOUD_FALLBACK=True" >> .env
-   $ echo "OLLAMA_HOST_URL=http://127.0.0.1:11434" >> .env
+1. REQUISITOS DEL HOST Y CACHÉ
+   $ sudo apt-get install redis-server
+   $ sudo systemctl enable redis-server
+   $ pip install arq redis
 
-2. PREPARACIÓN E INSTALACIÓN CON DEPENDENCIAS
-   $ python3 -m venv venv
-   $ source venv/bin/activate
-   $ pip install fastapi uvicorn pydantic gunicorn httpx google-genai python-dotenv
+2. DESPLIEGUE DEL INGESTOR (FASTAPI)
+   Maneja miles de conexiones entrantes sin ocupar tiempo de CPU.
+   $ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
-3. SERVICIO SYSTEMD (FASTAPI a 2 WORKERS)
-   Aplica un límite estricto a los hilos de CPU / RAM.
-   $ sudo nano /etc/systemd/system/fenix-api.service
-   ---
-   [Unit]
-   Description=Gunicorn instance to serve Fenix Stateless API
-   After=network.target
-
-   [Service]
-   User=ubuntu
-   Group=www-data
-   WorkingDirectory=/home/ubuntu/fenix-backend
-   Environment="PATH=/home/ubuntu/fenix-backend/venv/bin"
-   # Límite estricto de workers (-w 2) para no saturar memoria RAM/CPU
-   ExecStart=/home/ubuntu/fenix-backend/venv/bin/gunicorn app.main:app -w 2 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
-
-   [Install]
-   WantedBy=multi-user.target
-   ---
-   $ sudo systemctl daemon-reload
-   $ sudo systemctl start fenix-api
-   $ sudo systemctl enable fenix-api
-
-4. CADDY SERVER (SSL AUTOMÁTICO Y REVERSE PROXY)
-   $ sudo nano /etc/caddy/Caddyfile
-   ---
-   api.tu-dominio.com {
-       reverse_proxy 127.0.0.1:8000
-   }
-   ---
-   $ sudo systemctl reload caddy
-
-¡El servicio está listo y seguro en el borde operativo!
+3. DESPLIEGUE DEL WORKER DE ARQ (MODEL CONSUMER)
+   Consume la cola limitándola estrictamente. Ejecutar en terminal adyacente o SystemD.
+   $ arq app.main.WorkerSettings
 """
