@@ -36,4 +36,12 @@ class ChatResponse(BaseModel):
     status: str = Field(..., description="'success' o 'interrupted'")
     assistant_response: str = Field(..., description="Texto purgado listo para renderizarse en la UI del móvil")
     perfil_update: List[PerfilUpdateItem] = Field(default_factory=list, description="Array de diccionarios con las mutaciones EAV de SQLite a sincronizar")
-    inferenced_by: str = Field(..., description="Orquestador utilizado vía Cloud Bypass (ollama_offline_x86 / google_gemini_sdk_cloud)")
+    inferenced_by: str = Field(..., description="Orquestador utilizado vía Cloud Bypass (ollama_offline_x86 / google_gemini_sdk_cloud / llama_server_local_x86)")
+
+class ConsolidateRequest(BaseModel):
+    historial_dia: str = Field(..., description="String crudo del historial del día a consolidar")
+
+class ConsolidateResponse(BaseModel):
+    resumen_markdown: str = Field(..., description="Resumen consolidado en formato Markdown")
+    nuevos_datos_perfil: List[dict] = Field(default_factory=list, description="Datos extraídos para el perfil EAV")
+    alertas_coach: str = Field(..., description="Alertas proactivas detectadas durante la consolidación")

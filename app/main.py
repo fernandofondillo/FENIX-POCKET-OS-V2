@@ -7,8 +7,9 @@ from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
-from app.schemas.chat_schema import ChatRequest, ChatResponse, PerfilUpdateItem
+from app.schemas.chat_schema import ChatRequest, ChatResponse, PerfilUpdateItem, ConsolidateRequest, ConsolidateResponse
 from app.services.inference_router import InferenceRouter
+from app.services.fact_extractor import FactExtractor
 
 from arq import create_pool
 from arq.connections import RedisSettings
@@ -46,29 +47,14 @@ async def process_inference_task(ctx, task_id: str, payload: dict):
         result = await router.execute_inferential_cycle(payload)
         
         raw_response = result.get("assistant_response", "")
-        perfil_updates = []
-        
-        # Módulo de Extracción Regex de Mutaciones SQLite
-        match = re.search(r'<perfil_update>(.*?)</perfil_update>', raw_response, re.DOTALL)
-        if match:
-            json_str = match.group(1).strip()
-            json_str = re.sub(r'```json\n|\n```|```', '', json_str)
-            try:
-                parsed = json.loads(json_str)
-                if isinstance(parsed, list):
-                    perfil_updates = [PerfilUpdateItem(**item).model_dump() for item in parsed]
-                elif isinstance(parsed, dict):
-                    perfil_updates = [PerfilUpdateItem(**parsed).model_dump()]
-            except Exception as parsing_error:
-                print(f"[WORKER] Error procesando json estructurado EAV: {parsing_error}")
-            
-            raw_response = re.sub(r'<perfil_update>.*?</perfil_update>', '', raw_response, flags=re.DOTALL).strip()
+        # Utilizando el Extractor de Hechos (FactExtractor)
+        perfil_updates, sanitized_response = FactExtractor.extract_eav_mutations(raw_response)
         
         response_data = {
             "status": result.get("status", "success"),
-            "assistant_response": raw_response,
+            "assistant_response": sanitized_response,
             "perfil_update": perfil_updates,
-            "inferenced_by": result.get("inferenced_by", "Ollama 7B")
+            "inferenced_by": result.get("inferenced_by", "llama_server_local_x86")
         }
         
         # Almacenamos el resultado en Redis usando la clave task_id (Expira en 1 hora por seguridad Zero-Knowledge)
@@ -141,6 +127,48 @@ async def get_task_status(task_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/consolidate", response_model=ConsolidateResponse)
+async def consolidate_endpoint(request: ConsolidateRequest):
+    """
+    Endpoint Asíncrono de Consolidación Subconsciente.
+    Procesa todo el historial del día con su propio System Prompt para extraer resúmenes y Alertas (JSON regex).
+    """
+    try:
+        router = InferenceRouter()
+        
+        payload_consolidacion = {
+            "capsula_activa": {
+                "system_prompt": "Eres un núcleo analítico de memoria. Analiza el historial provisto. Retorna SOLAMENTE un JSON estructurado con: 'resumen_markdown' (string largo), 'nuevos_datos_perfil' (lista de diccionarios con 'categoria', 'clave', 'valor' para perfil EAV SQLite), 'alertas_coach' (string con notas para la salud del usuario). No añadas texto fuera del bloque ```json ... ```.",
+                "id": "consolidation_core"
+            },
+            "perfil_identidad": "",
+            "contexto_rag_hibrido": {},
+            "historial_reciente": [],
+            "mensaje_actual": f"Consolida el siguiente historial de transacciones de hoy:\n\n{request.historial_dia}"
+        }
+        
+        result = await router.execute_inferential_cycle(payload_consolidacion)
+        raw_response = result.get("assistant_response", "")
+        
+        # Aislar el bloque JSON tolerando markdown delimiters
+        match = re.search(r'```(?:json)?(.*?)```', raw_response, re.DOTALL)
+        if match:
+            json_str = match.group(1).strip()
+        else:
+            json_str = raw_response.strip()
+            
+        parsed_json = json.loads(json_str)
+        # Validar y retornar mediante esquema pydantic
+        response_model = ConsolidateResponse(**parsed_json)
+        return response_model
+        
+    except Exception as e:
+        print(f"[CONSOLIDATE ERROR] Fallo durante la consolidación: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        del request
+        gc.collect()
 
 # =====================================================================
 # RUNBOOK TÉCNICO DE DESPLIEGUE EVENT-DRIVEN (A.G.O.S)

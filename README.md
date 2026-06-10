@@ -412,3 +412,15 @@ Durante la base del `feature/agos-foundation`, el framework de Dart ha sido fort
 *   **Jerarquía de Memoria (`MemoryService`):** Orquestación a tres bandas. **Nivel 1** impone Strict-FIFO truncado a los últimos 8 mensajes para no saturar al proxy remoto. **Nivel 2** administra las mutaciones asíncronas vía `SQLite EAV`. **Nivel 3** empaqueta diarios y saberes expertos bajo AES-256 en modo GCM albergando el KeyPair Vectorial dentro del Keystore nativo del dispositivo (`flutter_secure_storage`).
 *   **Pipeline de Mapeo Vectorial y SQLite:** `LocalEmbeddingService` encapsula lógicas hiper-densas (álgebra de similitud coseno vectorial en Float32) relegando todo el trabajo y normalización de textos naturales hacia Background Isolates. Esto descarga el UI Thread principal, reteniendo el listado vectorial de bloques puramente en `sqflite`.
 
+---
+
+## 14. [SPRINT 2/4] CEREBRO FÉNIX POCKET V2: INTEGRADOR OFFLINE ESTRICTO Y CONSOLIDACIÓN EAV
+
+El núcleo cognitivo remoto (API FastAPI sobre VPS) se ha desacoplado completamente de soluciones Cloud comerciales, pasando a un entorno puramente soberano (LLaMa Server OpenAI-Compatible x86):
+
+*   **Inference Router Stateless (`InferenceRouter`):** Migración completa usando `httpx` asíncrono para enlazar con `http://127.0.0.1:8090/v1/chat/completions`. Se eliminó GenAI / Gemini, forzando la generación de Llama-based local models con timeout rudo de 60s. No se conserva estado local para prevenir desbordes RAM.
+*   **Detector de Emociones Flutter (`EmotionDetector`):** Scanner nativo NLP Dart pre-calculado leyendo frecuencias desde `assets/data/emociones_es.json`. Computa en O(n) los coeficientes base del prompt inicial del usuario para inyectar semántica pasiva.
+*   **FactExtractor y Mutaciones EAV:** Modificador Regex en Python que intercepta `<perfil_update>`, extrae JSON encapsulado y purga la respuesta generada por el backend. Validado con `Pydantic v2`.
+*   **Consolidación Autosustentada (`/api/v1/consolidate`):** Endpoint masivo asíncrono nocturno de limpieza. Utiliza `ConsolidateRequest` para digerir la bitácora del día y re-esculpir en Markdown + Alertas Coach la vida biológica del usuario.
+*   **Test Cero Fugas (`pytest`):** Mockeo riguroso mediante `respx_mock` previniendo loops sin contexto y avalando `fact_extractor_test`. No dependencias comerciales.
+
