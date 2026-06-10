@@ -29,10 +29,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    // JVM Toolchain: fuerza a TODAS las tareas (Java + Kotlin) a usar 17
+    // Resuelve "Inconsistent JVM-target compatibility" en tflite_flutter
+    kotlin {
+        jvmToolchain(17)
     }
 
     defaultConfig {
