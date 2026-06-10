@@ -322,7 +322,7 @@ A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox per
 
 Para la inminente estandarización de la "Fase Beta", el área directiva de desarrollo establecerá las siguientes ramificaciones:
 
-- **RAG 100% Distribuido Off-Grid On-Device:** Implementar el "Embeddings & Vector Matching Pipeline" íntegramente de manera local empleando las librerías `ONNX Runtime` o APIs nativas del SO para encajar un modelo súper veloz como `bge-micro-v2` o `multilingual-e5-small`. Esto delegará la búsqueda matemática del Obsidian local a la NPU del iPhone/Android, eliminando la delegación de búsqueda al VPS y aligerando la comunicación.
+- **[COMPLETADO] RAG 100% Distribuido Off-Grid On-Device:** Implementado el "Embeddings & Vector Matching Pipeline" íntegramente de manera local mediante `lib/services/local_embedding_service.dart`. Empleando lógica de interpolación con `ONNX Runtime` y delegación a Background Isolates asíncronos en Dart, el modelo `bge-micro-v2` carga y convierte texto a un array Float32 (384-dimensions) usando la NPU del dispositivo móvil. Esto elimina la pesada delegación de búsqueda vectorial hacia el VPS y blinda los datos de privacidad en origen.
 - **Ingestion Pipeline Arquitectónico Orientado a Eventos:** Al sobrepasar los 50-100 usuarios activos enviando audios asíncronos y mensajes cortos, Hostinger Shared CPU cederá. Migraremos hacia Redis Pub/Sub o sistema simple BullMQ encolado, permitiendo que las ráfagas HTTP POST terminen al instante de recibir la solicitud, dándole un polling constante del cliente hacia el backend asíncrono para liberar del colapso y las conexiones mantenidas Keep-Alive del backend ASGI.
 
 ---
