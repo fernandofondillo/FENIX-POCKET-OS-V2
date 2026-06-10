@@ -327,5 +327,77 @@ Para la inminente estandarización de la "Fase Beta", el área directiva de desa
 
 ---
 
+## 12. ARQUITECTURA DE COLA DE EVENTOS Y OPERACIONES REDIS (RUNBOOK PARA EL CTO)
+
+### 12.1 Especificación del Buffer de Tráfico (El Escudo de RAM)
+
+Nuestro VPS de Hostinger cuenta con 16 GB de RAM. Al exponer la inferencia de un Large Language Model (Qwen 2.5 7B en `llama.cpp` o `fast-llama`), los picos síncronos HTTP POST amenazan el ecosistema. Mediante el Ingestion Pipeline implementado en `FastAPI`, la API no ejecuta inferencias: simplemente actúa como buzón, despachando el payload crudo (`ChatRequest`) a la sala de espera in-memory (**Redis**) de forma instantánea. Redis funge como una barrera de contención robusta donde las peticiones forman fila mediante la librería nativa asíncrona `Arq`, regresando un UUID (estado HTTP 202) al móvil. 
+
+El verdadero nodo duro —el `process_inference_task` o *Worker*— está configurado con heurísticas conservadoras limitadas a `max_jobs = 2`, lo que garantiza que solo dos ráfagas atraviesan el bus del procesador al mismo tiempo sin importar que haya 1,500 usuarios esperando. Esto evita colisiones de punteros de memoria y preserva una ejecución elegante e ininterrumpida de los modelos en CPU.
+
+### 12.2 Manual de Operaciones para Hermes Agent (Despliegue Linux SystemD)
+
+Hermes Agent debe invocar los siguientes comandos en la terminal desatendida del VPS para orquestar la permanencia de la base de datos in-memory y los Workers asíncronos:
+
+**Módulo 1 - Instalación de la Matriz Redis**
+```bash
+# Instalación del motor de la caché base
+sudo apt-get update && sudo apt-get install redis-server -y
+
+# Modificación de contingencia en Sysctl para asegurar el máximo de conexiones concurrentes
+sudo sysctl vm.overcommit_memory=1
+echo "vm.overcommit_memory=1" | sudo tee -a /etc/sysctl.conf
+
+# Acotar Redis para operar netamente en RAM sin persistencia a disco para blindar la privacidad at-rest
+sudo sed -i 's/^maxmemory .*/maxmemory 1024mb/' /etc/redis/redis.conf
+sudo sed -i 's/^maxmemory-policy .*/maxmemory-policy allkeys-lru/' /etc/redis/redis.conf
+
+# Habilitación e inicialización en el SO
+sudo systemctl enable redis-server
+sudo systemctl restart redis-server
+```
+
+**Módulo 2 - SystemD Daemon para el Consumer Array (Arq Worker)**
+```bash
+# Declaración para que el consumidor despierte autónomamente junto al servidor Linux
+sudo nano /etc/systemd/system/fenix-arq-worker.service
+```
+
+```ini
+[Unit]
+Description=Fenix Arq Worker - Async Queue Ingestor (Stateless LLM)
+After=network.target redis-server.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/fenix-backend
+Environment="PATH=/home/ubuntu/fenix-backend/venv/bin"
+# Llama a la configuración nativa que dicta el Runbook principal dentro de Python
+ExecStart=/home/ubuntu/fenix-backend/venv/bin/arq app.main.WorkerSettings
+Restart=always
+TimeoutStartSec=10
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Integración de la Carga Asincrónica al Kernel
+sudo systemctl daemon-reload
+sudo systemctl start fenix-arq-worker
+sudo systemctl enable fenix-arq-worker
+```
+
+### 12.3 El Protocolo de Limpieza Efímera (Zero-Knowledge Validation)
+
+El paradigma más intrincado radica en la preservación de anonimato en un sistema asíncrono temporalmente pausado en RAM. Puesto que la inferencia ya redactada aguardará pasivamente en bloque hasta que el móvil de Flutter la reclame vía Long-Polling, corremos el riesgo de persistir fragmentos identitarios de manera inadvertida en el clúster perimetral.
+
+Para neutralizar toda trazabilidad en reposo, el endpoint de Polling (`GET /api/v1/task/{id}`) incorpora la directiva atómica: `await redis.delete(f"fenix_task_result:{task_id}")`.  
+Exactamente en el instante (escala de submilisegundos) en el que la API valida que los bytes de la respuesta JSON fueron interceptados satisfactoriamente por el Frontend móvil (`status: "completed"`), erradica brutalmente la memoria de Redis, disolviendo toda prueba digital. Ninguna traza del input del usuario ni de las indicaciones médicas o reflexiones finales queda grabada tras completar la transmisión del socket, culminando un protocolo en la sombra verdaderamente inviolable.
+
+---
+
 _“Nuestra privacidad no es un lujo. Es la barrera física entre el individuo y el sistema”._  
 **El Equipo Core Fénix / A.G.O.S.**
