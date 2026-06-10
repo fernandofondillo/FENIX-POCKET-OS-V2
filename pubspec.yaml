@@ -15,7 +15,6 @@ dependencies:
   path_provider: ^2.1.2
   encrypt: ^5.0.3
   crypto: ^3.0.3
-  http: ^1.2.0
   dio: ^5.4.3
   uuid: ^4.3.3
   tflite_flutter: ^0.10.4
@@ -29,6 +28,7 @@ dev_dependencies:
     sdk: flutter
   mockito: ^5.4.4
   build_runner: ^2.4.9
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
