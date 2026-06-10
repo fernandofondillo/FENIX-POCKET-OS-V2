@@ -42,18 +42,23 @@ import { productionFiles } from "./data/productionCode";
 import { Capsule, ObsidianFile, IdentityProfile, ChatMessage } from "./types";
 
 export default function App() {
+  // --- AUTH STATUS (SIMULACIÓN ONBOARDING MÓVIL) ---
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [onboardingStep, setOnboardingStep] = useState<number>(1);
+  const [authForm, setAuthForm] = useState({
+    nombre: "",
+    profesion: "",
+    meta: "",
+    vpsUrl: "https://api.fenix.me"
+  });
+  const [isInitializingVault, setIsInitializingVault] = useState<boolean>(false);
+
   // --- STATE CORE ---
   const [activeCapsule, setActiveCapsule] = useState<Capsule>(capsules[0]);
   const [activeTab, setActiveTab] = useState<"operations" | "obsidian" | "vps" | "code" | "notifications" | "skills">("operations");
   
   // Perfil evolutivo de identidad SQLite móvil
-  const [identity, setIdentity] = useState<IdentityProfile>({
-    name: "Carlos",
-    profession: "Ingeniero de Software",
-    trainingRythmn: "3 días por semana",
-    focusGoal: "Hipertrofia & Fortaleza lumbar",
-    healthConstraints: "Molestia sacroilíaca crónica / Fatiga lumbar súbita"
-  });
+  const [identity, setIdentity] = useState<IdentityProfile | null>(null);
 
   // --- MEMORY WATCHER (RAM) ---
   const [memoryUsage, setMemoryUsage] = useState({ used: 412, total: 4096 });
@@ -317,7 +322,7 @@ export default function App() {
           allowed_skills: activeCapsule.skills
         },
         active_skills: installedSkillIds,
-        perfil_identidad: `Carlos | ${identity.profession} | Entrena ${identity.trainingRythmn} | Foco: ${identity.focusGoal} | Restricciones: ${identity.healthConstraints}`,
+        perfil_identidad: `${identity?.name} | ${identity?.profession} | Entrena ${identity?.trainingRythmn} | Foco: ${identity?.focusGoal} | Restricciones: ${identity?.healthConstraints}`,
         contexto_rag_hibrido: {
           historial_usuario: rag.historial_usuario ? "[Cargado de /Diarios]: " + rag.historial_usuario.substring(0, 75) + "..." : "Ninguno",
           conocimiento_experto: rag.conocimiento_experto ? "[Cargado de /Conocimiento_Experto]: " + rag.conocimiento_experto.substring(0, 75) + "..." : "Ninguno"
@@ -669,7 +674,7 @@ export default function App() {
         allowed_skills: activeCapsule.skills
       },
       active_skills: installedSkillIds,
-      perfil_identidad: `Carlos, ${identity.profession}, entrenamientos: ${identity.trainingRythmn}, meta principal: ${identity.focusGoal}, restricción física médica: ${identity.healthConstraints}`,
+      perfil_identidad: `${identity?.name}, ${identity?.profession}, entrenamientos: ${identity?.trainingRythmn}, meta principal: ${identity?.focusGoal}, restricción física médica: ${identity?.healthConstraints}`,
       contexto_rag_hibrido: activeRag,
       // Podado estricto: VPS CPU optimization, solo últimos 8
       historial_reciente: messages.slice(-8).filter(m => m.role !== "system").map(m => ({
@@ -789,6 +794,123 @@ export default function App() {
       setCopiedFileIndex(null);
     }, 2000);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0C0C0C] font-sans flex flex-col justify-center select-none selection:bg-[#C5A059]/30 selection:text-white relative overflow-hidden">
+        {onboardingStep === 1 && (
+          <div className="flex flex-col items-center justify-center p-8 max-w-lg mx-auto w-full z-10 animate-in fade-in zoom-in duration-500 relative">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#C5A059]/5 blur-[100px] rounded-full pointer-events-none" />
+            <Shield className="w-20 h-20 text-[#C5A059] mb-8 relative" />
+            <h1 className="text-white font-serif text-3xl font-bold tracking-[0.1em] mb-4 text-center">A.G.O.S. / FÉNIX</h1>
+            <p className="text-white/60 text-center font-sans text-sm leading-relaxed mb-12 max-w-sm">
+              Tu Agente de Inteligencia Soberana.<br/>
+              100% Privado. Zero-Knowledge. Evolutivo.
+            </p>
+            <button
+              onClick={() => setOnboardingStep(2)}
+              className="bg-[#C5A059] hover:bg-[#B38F4B] text-black px-8 py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(197,160,89,0.2)]"
+            >
+              Inicializar mi Asistente Soberano
+            </button>
+          </div>
+        )}
+
+        {onboardingStep === 2 && (
+          <div className="flex justify-center p-4 z-10 sm:p-8 animate-in slide-in-from-right-4 fade-in duration-500 overflow-y-auto">
+            <div className="w-full max-w-md">
+              <h2 className="text-white font-serif text-2xl font-bold mb-2">Arquitectura de Identidad</h2>
+              <p className="text-white/50 text-xs mb-8">
+                Configura la matriz local. Estos datos no viajan de forma estática en la red, se inyectan en tiempo de ejecución al vuelo.
+              </p>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-white/70 text-xs font-semibold mb-2">Tu Nombre/Alias</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Alex"
+                    value={authForm.nombre}
+                    onChange={e => setAuthForm(prev => ({ ...prev, nombre: e.target.value }))}
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#C5A059]/50 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/70 text-xs font-semibold mb-2">Profesión / Rol</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Ingeniero DevOps, Estudiante"
+                    value={authForm.profesion}
+                    onChange={e => setAuthForm(prev => ({ ...prev, profesion: e.target.value }))}
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#C5A059]/50 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/70 text-xs font-semibold mb-2">Meta Principal con Fénix</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. Productividad, Fitness, Longevidad"
+                    value={authForm.meta}
+                    onChange={e => setAuthForm(prev => ({ ...prev, meta: e.target.value }))}
+                    className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#C5A059]/50 transition-colors"
+                  />
+                </div>
+
+                <div className="my-6 border-t border-[#2A2A2A]" />
+
+                <h3 className="text-white font-serif text-lg font-bold mb-2">Conexión VPS (Multiusuario)</h3>
+
+                <div>
+                  <label className="block text-white/70 text-xs font-semibold mb-2">URL Endpoint Fénix <span className="text-[#C5A059]">(Requerido)</span></label>
+                  <input
+                    type="url"
+                    value={authForm.vpsUrl}
+                    onChange={e => setAuthForm(prev => ({ ...prev, vpsUrl: e.target.value }))}
+                    className="w-full bg-[#1A1814] border border-[#C5A059]/50 rounded-xl px-4 py-3 text-sm text-[#C5A059] font-mono focus:outline-none focus:border-[#C5A059] transition-colors shadow-[0_0_15px_rgba(197,160,89,0.05)_inset]"
+                  />
+                </div>
+
+                <button
+                  disabled={isInitializingVault}
+                  onClick={() => {
+                    if (!authForm.nombre.trim() || !authForm.vpsUrl.trim()) return;
+                    setIsInitializingVault(true);
+                    
+                    // Simulación de generación AES-256 e instanciación local
+                    setTimeout(() => {
+                      setIdentity({
+                        name: authForm.nombre,
+                        profession: authForm.profesion || "Indefinido",
+                        goals: authForm.meta ? [authForm.meta] : [],
+                        trainingRythmn: "Pendiente de explorar",
+                        focusGoal: authForm.meta || "Exploratorio",
+                        healthConstraints: "Ninguna conocida",
+                        physicalData: { injuries: [], diet: "No especificada" }
+                      });
+                      setIsInitializingVault(false);
+                      setIsAuthenticated(true);
+                    }, 2500);
+                  }}
+                  className="w-full mt-8 bg-[#C5A059] hover:bg-[#B38F4B] text-black px-8 py-4 rounded-xl font-bold text-sm transition-all shadow-[0_4px_20px_rgba(197,160,89,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isInitializingVault ? (
+                    <>
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      Aislando Cápsula Local...
+                    </>
+                  ) : (
+                    "Crear Compañero Personal"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#080808] text-[#E0D8D0] flex flex-col font-sans selection:bg-[#C5A059]/30 selection:text-white">
@@ -1000,7 +1122,7 @@ export default function App() {
                       >
                         {/* Remitente de la burbuja */}
                         <span className="text-[9px] text-[#666] font-mono mb-1 px-1 flex items-center gap-1">
-                          {isUser ? identity.name : activeCapsule.name} • {msg.timestamp}
+                          {isUser ? identity?.name : activeCapsule.name} • {msg.timestamp}
                         </span>
 
                         {/* Burbuja propiamente dicha */}
@@ -1259,7 +1381,7 @@ export default function App() {
                       <label className="text-[10px] text-[#888] font-mono">Nombre del Usuario:</label>
                       <input
                         type="text"
-                        value={identity.name}
+                        value={identity?.name}
                         onChange={(e) => setIdentity({ ...identity, name: e.target.value })}
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />
@@ -1268,7 +1390,7 @@ export default function App() {
                       <label className="text-[10px] text-[#888] font-mono">Profesión / Rutina Diaria:</label>
                       <input
                         type="text"
-                        value={identity.profession}
+                        value={identity?.profession}
                         onChange={(e) => setIdentity({ ...identity, profession: e.target.value })}
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />
@@ -1277,7 +1399,7 @@ export default function App() {
                       <label className="text-[10px] text-[#888] font-mono">Frecuencia de Entrenamiento:</label>
                       <input
                         type="text"
-                        value={identity.trainingRythmn}
+                        value={identity?.trainingRythmn}
                         onChange={(e) => setIdentity({ ...identity, trainingRythmn: e.target.value })}
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />
@@ -1286,7 +1408,7 @@ export default function App() {
                       <label className="text-[10px] text-[#888] font-mono">Meta Principal de Salud:</label>
                       <input
                         type="text"
-                        value={identity.focusGoal}
+                        value={identity?.focusGoal}
                         onChange={(e) => setIdentity({ ...identity, focusGoal: e.target.value })}
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />
@@ -1295,7 +1417,7 @@ export default function App() {
                       <label className="text-[10px] text-[#888] font-mono">Restricción Biomecánica / Dolencias (Sacado por noche de Aprendizaje Diario):</label>
                       <textarea
                         rows={2}
-                        value={identity.healthConstraints}
+                        value={identity?.healthConstraints}
                         onChange={(e) => setIdentity({ ...identity, healthConstraints: e.target.value })}
                         className="w-full bg-[#141414] border border-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#E0D8D0] focus:outline-none focus:border-[#C5A059]/50 font-sans"
                       />

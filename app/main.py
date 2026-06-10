@@ -26,6 +26,9 @@ async def chat_endpoint(request: ChatRequest):
         # Cast Pydantic -> Dict para ruteo
         payload = request.model_dump()
         
+        # Segmentación Multi-Usuario: Log interno visible solo en la consola del VPS
+        print(f"[INFERENCIA] Procesando ráfaga cognitiva efímera para el usuario: {payload.get('user_id', 'Anónimo')}")
+        
         # El router ejecuta inferencia. Los límites de tokens agresivos están configurados
         # en InferenceRouter (max_tokens=250), así minimizamos uso de RAM e hilos zombis.
         result = await router.execute_inferential_cycle(payload)

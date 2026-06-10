@@ -123,7 +123,17 @@ Para proveer un puente holístico entre el entorno Fénix y el ecosistema cerrad
 
 ---
 
-## 6. ARQUITECTURA DEL PERFIL EVOLUTIVO (SQLite EAV)
+## 6. FLUJO DE BIENVENIDA Y MATRIZ DE IDENTIDAD (ONBOARDING)
+
+Al iniciar la bóveda por primera vez en Flutter (`welcome_screen.dart`), el Agente ejecuta un proceso de auto-gestión y blindaje de perfiles:
+
+1.  **Diferenciación Zero-Knowledge:** Genera un `user_id` único mediante la librería `UUID` local que aisla tu cuenta de las demás de forma completamente descentralizada.
+2.  **Llavero Biométrico:** Crea una clave de encriptación maestra `AES-256` en el llavero hermético del móvil (`SecureStorageService`).
+3.  **Identidad Estructural SQLite:** Pide los metadatos más básicos (Nombre, Roles, Metas) e instancia las primeras filas "semilla" del perfil EAV de la base de datos de la forma más amigable posible con una interfaz ultra purista, redirigiendo al vuelo hacia el chat principal interactivo al acabar.
+
+---
+
+## 7. ARQUITECTURA DEL PERFIL EVOLUTIVO (SQLite EAV)
 
 Para garantizar que el modelo de IA (Qwen 2.5) local del VPS pueda persistir el conocimiento dinámicamente sin requerir migraciones de base de datos, modificaciones estructurales o de código en el móvil, hemos formalizado el **Patrón EAV (Entity-Attribute-Value)**. Tradicionalmente, agregar un nuevo campo (ej. "nivel_colesterol") requeriría una migración `ALTER TABLE`. Con EAV, la IA estructura el conocimiento como filas independientes de metadatos.
 
@@ -135,7 +145,7 @@ Para garantizar que el modelo de IA (Qwen 2.5) local del VPS pueda persistir el 
 - `valor`: `TEXT NOT NULL` (El Valor: la información cruda u observación deducida)
 - `ultima_actualizacion`: `TEXT NOT NULL` (Timestamp ISO8601)
 
-### 6.1. Integridad Estructural y Upserts Atómicos
+### 7.1. Integridad Estructural y Upserts Atómicos
 
 El sistema gestiona la actualización ininterrumpida a través de transacciones SQL **Upsert** (`INSERT OR REPLACE INTO`).
 Cuando el LLM deduce un estado a partir del diálogo (ej. _el usuario dice "Me duele la espalda hoy"_), el orquestador backend detecta el patrón y responde emitiendo una inyección estructurada oculta en la respuesta:
@@ -152,11 +162,11 @@ Al recibirse en Flutter (`perfil_db_service.dart`), la app móvil procesa este o
 
 ---
 
-## 7. CONTRATO DE DATOS (Protocolo de Inferencia Rápida)
+## 8. CONTRATO DE DATOS (Protocolo de Inferencia Rápida)
 
 En `Pydantic` (FastAPI) y `Dart` (Flutter), todos los objetos de transporte se normalizan bajo un contrato **strict snake_case**. La latencia se minimiza podando el contexto experto local a ~400 palabras ANTES de que el payload cruce la red, mitigando la carga sobre la CPU remota.
 
-### 7.1. Solicitud (HTTP POST `ChatRequest` a `/api/v1/chat`)
+### 8.1. Solicitud (HTTP POST `ChatRequest` a `/api/v1/chat`)
 
 ```json
 {
@@ -181,7 +191,7 @@ En `Pydantic` (FastAPI) y `Dart` (Flutter), todos los objetos de transporte se n
 }
 ```
 
-### 7.2. Respuesta (HTTP `ChatResponse` desde el VPS)
+### 8.2. Respuesta (HTTP `ChatResponse` desde el VPS)
 
 El servidor extrae cualquier mandato de modificación EAV escondido en un formato pseudo-XML `<perfil_update>` emitido por la IA para inyectarlo en el array `perfil_update`:
 
@@ -202,9 +212,9 @@ El servidor extrae cualquier mandato de modificación EAV escondido en un format
 
 ---
 
-## 8. GUÍA DE INSTALACIÓN, DESPLIEGUE Y OPERACIÓN COMPLETA
+## 9. GUÍA DE INSTALACIÓN, DESPLIEGUE Y OPERACIÓN COMPLETA
 
-### 8.1 Optimizaciones en VPS para Ollama (Límite de Consumo RAM/CPU)
+### 9.1 Optimizaciones en VPS para Ollama (Límite de Consumo RAM/CPU)
 
 Para asegurar que el modelo sobreviva a concurrencia alta en un servidor económico.
 
@@ -224,7 +234,7 @@ Environment="OLLAMA_NUM_CTX=4096" # Hard limit del contexto a 4k (salva RAM)
 Environment="OLLAMA_KEEP_ALIVE=-1" # Impide que se evicte el modelo de 7B tras inactividad
 ```
 
-### 8.2 Lanzamiento Asíncrono de FastAPI
+### 9.2 Lanzamiento Asíncrono de FastAPI
 
 Restringimos fuertemente los workers explícitamente a 2 (`--workers 2`) para evitar que Python I/O robe tiempos de CPU críticos que requiere el pipeline matemático del LLM subyacente.
 
@@ -238,7 +248,7 @@ pip install fastapi pydantic uvicorn[standard] python-dotenv
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers
 ```
 
-### 8.3 Despliegue en Entornos Reales Edge (iPhone Físico)
+### 9.3 Despliegue en Entornos Reales Edge (iPhone Físico)
 
 A.G.O.S se ha diseñado para poder probarlo y desplegarlo en dispositivos físicos iOS sin necesidad inmediata de una cuenta Apple Developer de pago.
 
@@ -273,7 +283,7 @@ A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox per
 
 ---
 
-## 9. SEGURIDAD COMPROBADA Y PARÁMETROS AGNOSTICOS
+## 10. SEGURIDAD COMPROBADA Y PARÁMETROS AGNOSTICOS
 
 - **Evitando el Sobrepensamiento del Modelo:** La lógica implementada a lo largo del sistema y los inyectores imponen al framework (Ollama / Express gemini API fallback) condiciones espartanas obligatorias: `temperature=0.3`, `top_p=0.9` y `max_tokens` delimitados a `200/300` para evadir respuestas que ahoguen la CPU (Alucinaciones de cola larga de probabilidad).
 - **Total Aislamiento Stateless:** Todo usuario que llega al Backend es procesado dentro de un endpoint inmutable. Si la red cae, el servidor no conservará retazos del perfil SQLite del usuario, logrando cero cruce de datos por diseño y mitigando ataques locales (LFI/RCE).
