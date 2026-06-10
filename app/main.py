@@ -10,6 +10,8 @@ from typing import Dict, Any, Optional
 from app.schemas.chat_schema import ChatRequest, ChatResponse, PerfilUpdateItem, ConsolidateRequest, ConsolidateResponse
 from app.services.inference_router import InferenceRouter
 from app.services.fact_extractor import FactExtractor
+from app.services.skill_extractor import SkillExtractor
+from app.services.skills_service import skill_router
 
 from arq import create_pool
 from arq.connections import RedisSettings
@@ -18,6 +20,7 @@ from arq.connections import RedisSettings
 REDIS_SETTINGS = RedisSettings(host='localhost', port=6379)
 
 app = FastAPI(title="A.G.O.S. / Fénix", description="Stateless Inference Subconscious Server - Event Driven Pipeline")
+app.include_router(skill_router, prefix="/api/v1/skills", tags=["Skills"])
 
 class TaskResponse(BaseModel):
     status: str
@@ -47,13 +50,18 @@ async def process_inference_task(ctx, task_id: str, payload: dict):
         result = await router.execute_inferential_cycle(payload)
         
         raw_response = result.get("assistant_response", "")
+
+        user_id = payload.get("user_id", "Anónimo")
+        executed_skills, response_temp = await SkillExtractor.extract_and_execute_skills(raw_response, user_id)
+        
         # Utilizando el Extractor de Hechos (FactExtractor)
-        perfil_updates, sanitized_response = FactExtractor.extract_eav_mutations(raw_response)
+        perfil_updates, sanitized_response = FactExtractor.extract_eav_mutations(response_temp)
         
         response_data = {
             "status": result.get("status", "success"),
             "assistant_response": sanitized_response,
             "perfil_update": perfil_updates,
+            "executed_skills": executed_skills,
             "inferenced_by": result.get("inferenced_by", "llama_server_local_x86")
         }
         

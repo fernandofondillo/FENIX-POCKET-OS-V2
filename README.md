@@ -331,15 +331,16 @@ Para la inminente estandarización de la "Fase Beta", el área directiva de desa
 
 ### 12.1 Especificación del Buffer de Tráfico (El Escudo de RAM)
 
-Nuestro VPS de Hostinger cuenta con 16 GB de RAM. Al exponer la inferencia de un Large Language Model (Qwen 2.5 7B en `llama.cpp` o `fast-llama`), los picos síncronos HTTP POST amenazan el ecosistema. Mediante el Ingestion Pipeline implementado en `FastAPI`, la API no ejecuta inferencias: simplemente actúa como buzón, despachando el payload crudo (`ChatRequest`) a la sala de espera in-memory (**Redis**) de forma instantánea. Redis funge como una barrera de contención robusta donde las peticiones forman fila mediante la librería nativa asíncrona `Arq`, regresando un UUID (estado HTTP 202) al móvil. 
+Nuestro VPS de Hostinger cuenta con 16 GB de RAM. Al exponer la inferencia de un Large Language Model (Qwen 2.5 7B en `llama.cpp` o `fast-llama`), los picos síncronos HTTP POST amenazan el ecosistema. Mediante el Ingestion Pipeline implementado en `FastAPI`, la API no ejecuta inferencias: simplemente actúa como buzón, despachando el payload crudo (`ChatRequest`) a la sala de espera in-memory (**Redis**) de forma instantánea. Redis funge como una barrera de contención robusta donde las peticiones forman fila mediante la librería nativa asíncrona `Arq`, regresando un UUID (estado HTTP 202) al móvil.
 
-El verdadero nodo duro —el `process_inference_task` o *Worker*— está configurado con heurísticas conservadoras limitadas a `max_jobs = 2`, lo que garantiza que solo dos ráfagas atraviesan el bus del procesador al mismo tiempo sin importar que haya 1,500 usuarios esperando. Esto evita colisiones de punteros de memoria y preserva una ejecución elegante e ininterrumpida de los modelos en CPU.
+El verdadero nodo duro —el `process_inference_task` o _Worker_— está configurado con heurísticas conservadoras limitadas a `max_jobs = 2`, lo que garantiza que solo dos ráfagas atraviesan el bus del procesador al mismo tiempo sin importar que haya 1,500 usuarios esperando. Esto evita colisiones de punteros de memoria y preserva una ejecución elegante e ininterrumpida de los modelos en CPU.
 
 ### 12.2 Manual de Operaciones para Hermes Agent (Despliegue Linux SystemD)
 
 Hermes Agent debe invocar los siguientes comandos en la terminal desatendida del VPS para orquestar la permanencia de la base de datos in-memory y los Workers asíncronos:
 
 **Módulo 1 - Instalación de la Matriz Redis**
+
 ```bash
 # Instalación del motor de la caché base
 sudo apt-get update && sudo apt-get install redis-server -y
@@ -358,6 +359,7 @@ sudo systemctl restart redis-server
 ```
 
 **Módulo 2 - SystemD Daemon para el Consumer Array (Arq Worker)**
+
 ```bash
 # Declaración para que el consumidor despierte autónomamente junto al servidor Linux
 sudo nano /etc/systemd/system/fenix-arq-worker.service
@@ -408,9 +410,9 @@ _“Nuestra privacidad no es un lujo. Es la barrera física entre el individuo y
 
 Durante la base del `feature/agos-foundation`, el framework de Dart ha sido fortificado con sistemas Zero-Knowledge completamente herméticos, estructurados en aislamientos matemáticos y biológicos:
 
-*   **Router Cognitivo `CapsuleDetector`:** Motor autónomo de análisis léxico rápido `O(n)`. Determina en tiempo de ejecución de la vista si el usuario necesita un `fitness_expert`, `pro_work_assistant` o un simple fallback al `general_coordinator`, eliminando la necesidad de que el LLM del VPS asuma el consumo de tokens para el enrutamiento primario.
-*   **Jerarquía de Memoria (`MemoryService`):** Orquestación a tres bandas. **Nivel 1** impone Strict-FIFO truncado a los últimos 8 mensajes para no saturar al proxy remoto. **Nivel 2** administra las mutaciones asíncronas vía `SQLite EAV`. **Nivel 3** empaqueta diarios y saberes expertos bajo AES-256 en modo GCM albergando el KeyPair Vectorial dentro del Keystore nativo del dispositivo (`flutter_secure_storage`).
-*   **Pipeline de Mapeo Vectorial y SQLite:** `LocalEmbeddingService` encapsula lógicas hiper-densas (álgebra de similitud coseno vectorial en Float32) relegando todo el trabajo y normalización de textos naturales hacia Background Isolates. Esto descarga el UI Thread principal, reteniendo el listado vectorial de bloques puramente en `sqflite`.
+- **Router Cognitivo `CapsuleDetector`:** Motor autónomo de análisis léxico rápido `O(n)`. Determina en tiempo de ejecución de la vista si el usuario necesita un `fitness_expert`, `pro_work_assistant` o un simple fallback al `general_coordinator`, eliminando la necesidad de que el LLM del VPS asuma el consumo de tokens para el enrutamiento primario.
+- **Jerarquía de Memoria (`MemoryService`):** Orquestación a tres bandas. **Nivel 1** impone Strict-FIFO truncado a los últimos 8 mensajes para no saturar al proxy remoto. **Nivel 2** administra las mutaciones asíncronas vía `SQLite EAV`. **Nivel 3** empaqueta diarios y saberes expertos bajo AES-256 en modo GCM albergando el KeyPair Vectorial dentro del Keystore nativo del dispositivo (`flutter_secure_storage`).
+- **Pipeline de Mapeo Vectorial y SQLite:** `LocalEmbeddingService` encapsula lógicas hiper-densas (álgebra de similitud coseno vectorial en Float32) relegando todo el trabajo y normalización de textos naturales hacia Background Isolates. Esto descarga el UI Thread principal, reteniendo el listado vectorial de bloques puramente en `sqflite`.
 
 ---
 
@@ -418,9 +420,19 @@ Durante la base del `feature/agos-foundation`, el framework de Dart ha sido fort
 
 El núcleo cognitivo remoto (API FastAPI sobre VPS) se ha desacoplado completamente de soluciones Cloud comerciales, pasando a un entorno puramente soberano (LLaMa Server OpenAI-Compatible x86):
 
-*   **Inference Router Stateless (`InferenceRouter`):** Migración completa usando `httpx` asíncrono para enlazar con `http://127.0.0.1:8090/v1/chat/completions`. Se eliminó GenAI / Gemini, forzando la generación de Llama-based local models con timeout rudo de 60s. No se conserva estado local para prevenir desbordes RAM.
-*   **Detector de Emociones Flutter (`EmotionDetector`):** Scanner nativo NLP Dart pre-calculado leyendo frecuencias desde `assets/data/emociones_es.json`. Computa en O(n) los coeficientes base del prompt inicial del usuario para inyectar semántica pasiva.
-*   **FactExtractor y Mutaciones EAV:** Modificador Regex en Python que intercepta `<perfil_update>`, extrae JSON encapsulado y purga la respuesta generada por el backend. Validado con `Pydantic v2`.
-*   **Consolidación Autosustentada (`/api/v1/consolidate`):** Endpoint masivo asíncrono nocturno de limpieza. Utiliza `ConsolidateRequest` para digerir la bitácora del día y re-esculpir en Markdown + Alertas Coach la vida biológica del usuario.
-*   **Test Cero Fugas (`pytest`):** Mockeo riguroso mediante `respx_mock` previniendo loops sin contexto y avalando `fact_extractor_test`. No dependencias comerciales.
+- **Inference Router Stateless (`InferenceRouter`):** Migración completa usando `httpx` asíncrono para enlazar con `http://127.0.0.1:8090/v1/chat/completions`. Se eliminó GenAI / Gemini, forzando la generación de Llama-based local models con timeout rudo de 60s. No se conserva estado local para prevenir desbordes RAM.
+- **Detector de Emociones Flutter (`EmotionDetector`):** Scanner nativo NLP Dart pre-calculado leyendo frecuencias desde `assets/data/emociones_es.json`. Computa en O(n) los coeficientes base del prompt inicial del usuario para inyectar semántica pasiva.
+- **FactExtractor y Mutaciones EAV:** Modificador Regex en Python que intercepta `<perfil_update>`, extrae JSON encapsulado y purga la respuesta generada por el backend. Validado con `Pydantic v2`.
+- **Consolidación Autosustentada (`/api/v1/consolidate`):** Endpoint masivo asíncrono nocturno de limpieza. Utiliza `ConsolidateRequest` para digerir la bitácora del día y re-esculpir en Markdown + Alertas Coach la vida biológica del usuario.
+- **Test Cero Fugas (`pytest`):** Mockeo riguroso mediante `respx_mock` previniendo loops sin contexto y avalando `fact_extractor_test`. No dependencias comerciales.
 
+---
+
+## 15. [SPRINT 3/4] INTERFAZ FÉNIX POCKET V2: ECOSISTEMA DE SKILLS Y BÓVEDA CERO CONOCIMIENTO
+
+El armazón interactivo del Front-End en Flutter y las compuertas de comandos semánticos (Skills) en el Backend han sido consolidados y están blindados matemáticamente:
+
+- **Secure Onboarding de Bóveda Local (`WelcomeScreen`):** Flujo puro de matrícula de hardware. Genera UUIDv4 en frío más un `KeyPair Asimétrico (master_key_aes256) de 32 bytes` inyectado en el Secure Keystore (`flutter_secure_storage`). Sin envío de métricas de instalación a la nube.
+- **Gestor Móvil de Peticiones (`SkillsService` con Dio):** Ruteo dinámico y limitación que permite interceptar peticiones de la RAM del host y filtrarlas basándose en los vectores permitidos de la cápsula. Historial de Skills cacheado atómicamente en `SharedPreferences` para control del usuario de la actividad del LLM.
+- **Catálogo Constante de Herramientas Backend (`Pydantic v2` y API):** Sistema de 5 herramientas estáticas construidas (`agenda_crear`, `notificacion_enviar`, `web_search`, `memoria_recordar`, `memoria_olvidar`). Su motor de Rate-Limit en la RAM restringe severamente a 10 requests por minuto/por usuario.
+- **Skill Regex Extractor:** Parseador Regex O(N) resiliente en FastAPI (`app.services.skill_extractor.SkillExtractor`). Intercepta firmas `<skill name="..." />`, las extrae, ejecuta la función vía diccionario mapeado en vivo e inyecta su output directamente en el esquema de la API antes de devolverlo a Flutter. Evita cualquier parpadeo de código técnico en el UI/UX final del chat de usuario.
