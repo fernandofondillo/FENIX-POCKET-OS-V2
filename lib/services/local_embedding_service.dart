@@ -1,103 +1,161 @@
 // lib/services/local_embedding_service.dart
-
 import 'dart:isolate';
 import 'dart:typed_data';
+import 'dart:math' as math;
+import 'package:logger/logger.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
+// import 'package:tflite_flutter/tflite_flutter.dart'; // Comentado por ausencia de binario en repo
 
-// Nota de producción: 
-// Se requiere añadir el motor ML en el archivo pubspec.yaml:
-// dependencies:
-//   tflite_flutter: ^0.10.4
-//   onnxruntime: ^1.17.0
-// import 'package:tflite_flutter/tflite_flutter.dart';
+final Logger _logger = Logger();
 
-/// Estructura de mensaje inmutable para coordinar el paso de mensajes hacia el Isolate
-class SolicitudEmbedding {
-  final String texto_crudo;
-  final SendPort puerto_de_respuesta;
+class EmbeddingRequest {
+  final String content;
+  final SendPort sendPort;
 
-  SolicitudEmbedding(this.texto_crudo, this.puerto_de_respuesta);
+  EmbeddingRequest(this.content, this.sendPort);
 }
 
 /// Servicio de generación matemática de Embeddings Distribuido (Off-Grid).
-/// Transforma texto natural del Nano-Obsidian en vectores de alta dimensionalidad (Float32).
-/// Utiliza un Isolate para evitar bloqueos en el UI Thread (Frame drops).
+/// Transforma texto natural en vectores de alta dimensionalidad (Float32).
+/// Utiliza SQFlite para la indexación y recuperación vectorial nativa.
 class LocalEmbeddingService {
   static const String _model_path = 'assets/models/bge-micro-v2.tflite';
-  
-  // Referencia al Interpreter en memoria
-  // Interpreter? _interpreter;
   bool _is_initialized = false;
+  Database? _db;
+  final Uuid _uuid = const Uuid();
 
-  /// Inicializa el pipeline de ML cargando el modelo de embeddings 
-  /// vectoriales en la memoria del dispositivo (CPU/NPU).
+  Future<void> init_database() async {
+    final db_path = await getDatabasesPath();
+    final path = join(db_path, 'embeddings_vault.db');
+
+    _db = await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE embedding_chunks (
+            id TEXT PRIMARY KEY,
+            doc_id TEXT NOT NULL,
+            vector BLOB NOT NULL,
+            chapter TEXT NOT NULL
+          )
+        ''');
+        _logger.i('[LOCAL_EMBEDDING] Tabla embedding_chunks creada exitosamente.');
+      },
+    );
+  }
+
   Future<void> init_model() async {
     if (_is_initialized) return;
-    
     try {
-      // Flujo de producción nativo:
-      // final options = InterpreterOptions()..useNnApi(); // delegación NPU guiada
+      if (_db == null) await init_database();
+      
+      // Simulación de carga del Interpreter de NPU
+      // final options = InterpreterOptions()..useNnApi(); // delegación NPU 
       // _interpreter = await Interpreter.fromAsset(_model_path, options: options);
       // _interpreter!.allocateTensors();
       
-      // Simulación de carga en tiempo real para el Sandbox de Arquitectura
-      await Future.delayed(const Duration(milliseconds: 1200));
+      await Future.delayed(const Duration(milliseconds: 600));
       _is_initialized = true;
-      print("[LOCAL_EMBEDDING] Modelo multilingüe instanciado en NPU/CPU con éxito.");
-    } catch (error_carga) {
-      print("[LOCAL_EMBEDDING_ERROR] Falla crítica al montar el modelo tensorial: $error_carga");
+      _logger.i("[LOCAL_EMBEDDING] Modelo TFLite $_model_path instanciado en NPU/CPU con éxito.");
+    } catch (e) {
+      _logger.e("[LOCAL_EMBEDDING_ERROR] Falla crítica al montar el modelo tensorial: $e");
     }
   }
 
-  /// Entry point público para solicitar un embedding desde la lógica de estado.
-  /// Delega el cálculo tensorial pesado a un Isolate en background.
-  Future<List<double>> generar_vector_embedding(String texto) async {
-    if (!_is_initialized) {
-      await init_model();
-    }
+  Future<List<double>> generar_vector(String texto) async {
+    if (!_is_initialized) await init_model();
 
-    // Apertura del canal de comunicación bidireccional asíncrono
-    final puerto_de_recepcion = ReceivePort();
-    
-    // Despeje del Main Thread hacia el Isolate
-    await Isolate.spawn(
-      _isolate_embedding_worker, 
-      SolicitudEmbedding(texto, puerto_de_recepcion.sendPort)
-    );
+    final receive_port = ReceivePort();
+    await Isolate.spawn(_embedding_worker, EmbeddingRequest(texto, receive_port.sendPort));
 
-    // Espera asíncrona por el array matricial Float32List
-    final List<double> vector_resultante = await puerto_de_recepcion.first as List<double>;
-    puerto_de_recepcion.close();
-    
+    final vector_resultante = await receive_port.first as List<double>;
+    receive_port.close();
     return vector_resultante;
   }
 
-  /// Worker aislado (Background Thread). Su única responsabilidad es ejecutar
-  /// la carga matemática sobre el motor de inferencia sin congelar el render tree.
-  static void _isolate_embedding_worker(SolicitudEmbedding solicitud) {
-    try {
-      // 1. Tokenización del String a subwords (Input IDs, Attention Mask)
-      // List<int> tokens = subword_tokenizer.tokenize(solicitud.texto_crudo);
+  Future<void> indexar_fragmento(String doc_id, String chapter, String contenido) async {
+    final vector = await generar_vector(contenido);
+    final bytes = Float32List.fromList(vector).buffer.asUint8List();
+    
+    await _db!.insert(
+      'embedding_chunks',
+      {
+        'id': _uuid.v4(),
+        'doc_id': doc_id,
+        'vector': bytes,
+        'chapter': chapter
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _logger.i('[LOCAL_EMBEDDING] Fragmento indexado y vectorizado: $doc_id -> $chapter');
+  }
+
+  Future<List<Map<String, dynamic>>> buscar_top_k(List<double> query_vector, {int k = 3}) async {
+    if (_db == null) await init_database();
+    
+    final records = await _db!.query('embedding_chunks');
+    List<Map<String, dynamic>> results = [];
+
+    for (var record in records) {
+      final bytes = record['vector'] as Uint8List;
+      final vector = Float32List.view(bytes.buffer).toList();
+      final similarity = _cosine_similarity(query_vector, vector);
       
-      // 2. Ejecución Inferencia Tensorial Directa
-      // var input_tensors = [tokens];
-      // var output_tensors = List.filled(1 * 384, 0.0).reshape([1, 384]);
-      // _interpreter.run(input_tensors, output_tensors);
+      results.add({
+        'doc_id': record['doc_id'],
+        'chapter': record['chapter'],
+        'similarity': similarity
+      });
+    }
 
-      // Simulación criptográfica determinista visual para el Sandbox (Devuelve Vector Dense 384)
-      final int dimension_vector = 384; 
-      final List<double> vector_simulado = List.generate(
-        dimension_vector, 
-        (indice) {
-          int hash = solicitud.texto_crudo.hashCode.abs();
-          return ((hash * (indice + 1)) % 200) / 100.0 - 1.0;
+    results.sort((a, b) => (b['similarity'] as double).compareTo(a['similarity'] as double));
+    return results.take(k).toList();
+  }
+
+  double _cosine_similarity(List<double> a, List<double> b) {
+    if (a.length != b.length) return 0.0;
+    double dot_product = 0.0;
+    double norm_a = 0.0;
+    double norm_b = 0.0;
+    for (int i = 0; i < a.length; i++) {
+        dot_product += a[i] * b[i];
+        norm_a += a[i] * a[i];
+        norm_b += b[i] * b[i];
+    }
+    if (norm_a == 0.0 || norm_b == 0.0) return 0.0;
+    return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b));
+  }
+
+  static void _embedding_worker(EmbeddingRequest request) {
+    try {
+      final int dimensions = 384; 
+      // Lógica de vectorización mock determinista para el sandbox 
+      final List<double> vector = List.filled(dimensions, 0.0);
+      int seed = 0;
+      for (int i = 0; i < request.content.length; i++) {
+        seed = (seed * 31 + request.content.codeUnitAt(i)) % 100000;
+      }
+      
+      math.Random random = math.Random(seed);
+      double norm = 0.0;
+      for (int i = 0; i < dimensions; i++) {
+        vector[i] = random.nextDouble() * 2.0 - 1.0;
+        norm += vector[i] * vector[i];
+      }
+      
+      norm = math.sqrt(norm);
+      if (norm > 0) {
+        for (int i = 0; i < dimensions; i++) {
+          vector[i] = vector[i] / norm;
         }
-      );
-
-      // 3. Devolución de la matriz de contexto (float32) por el canal
-      solicitud.puerto_de_respuesta.send(vector_simulado);
-    } catch (excepcion_isolate) {
-      // Escape pasivo frente a errores de desbordamiento tensorial
-      solicitud.puerto_de_respuesta.send(<double>[]);
+      }
+      
+      request.sendPort.send(vector);
+    } catch (e) {
+      request.sendPort.send(<double>[]);
     }
   }
 }

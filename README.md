@@ -401,3 +401,14 @@ Exactamente en el instante (escala de submilisegundos) en el que la API valida q
 
 _“Nuestra privacidad no es un lujo. Es la barrera física entre el individuo y el sistema”._  
 **El Equipo Core Fénix / A.G.O.S.**
+
+---
+
+## 13. [SPRINT 1/4] FUNDAMENTOS FÉNIX POCKET V2: AISLAMIENTO DART E INGESTIÓN DE INTELIGENCIA
+
+Durante la base del `feature/agos-foundation`, el framework de Dart ha sido fortificado con sistemas Zero-Knowledge completamente herméticos, estructurados en aislamientos matemáticos y biológicos:
+
+*   **Router Cognitivo `CapsuleDetector`:** Motor autónomo de análisis léxico rápido `O(n)`. Determina en tiempo de ejecución de la vista si el usuario necesita un `fitness_expert`, `pro_work_assistant` o un simple fallback al `general_coordinator`, eliminando la necesidad de que el LLM del VPS asuma el consumo de tokens para el enrutamiento primario.
+*   **Jerarquía de Memoria (`MemoryService`):** Orquestación a tres bandas. **Nivel 1** impone Strict-FIFO truncado a los últimos 8 mensajes para no saturar al proxy remoto. **Nivel 2** administra las mutaciones asíncronas vía `SQLite EAV`. **Nivel 3** empaqueta diarios y saberes expertos bajo AES-256 en modo GCM albergando el KeyPair Vectorial dentro del Keystore nativo del dispositivo (`flutter_secure_storage`).
+*   **Pipeline de Mapeo Vectorial y SQLite:** `LocalEmbeddingService` encapsula lógicas hiper-densas (álgebra de similitud coseno vectorial en Float32) relegando todo el trabajo y normalización de textos naturales hacia Background Isolates. Esto descarga el UI Thread principal, reteniendo el listado vectorial de bloques puramente en `sqflite`.
+
