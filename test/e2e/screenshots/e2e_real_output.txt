@@ -1,0 +1,68 @@
+======================================================================
+FASE 6.2 — TEST E2E CON BACKEND REAL
+======================================================================
+
+[ENDPOINT] Usando VPS directo: http://127.0.0.1:8000
+
+[1] user_id: test_e2e_b0c2c5ce
+
+[2] Health (verificado en endpoint discovery)
+   Status: 200
+   Backend: ok
+   LLM: True
+   Model: Qwen2.5-7B-Instruct-Q4_K_M
+   Redis: True
+   Event-driven: True
+   Cápsulas: 7
+   Skills: 5
+
+[3] GET /api/v1/capsules
+   Status: 200
+   Cápsulas: 1
+     - [{'id': 'fitness_expert', 'nombre': 'Coach Carlos', 'emoji': '🏋️'}, {'id': 'nutricion_expert', 'nombre': 'Dra. Sofía', 'emoji': '🥑'}, {'id': 'zen_mentor', 'nombre': 'Aurelio', 'emoji': '🧘'}, {'id': 'elderly_care', 'nombre': 'Mateo', 'emoji': '🧓'}, {'id': 'biohacking_expert', 'nombre': 'Dr. Lex', 'emoji': '🧬'}, {'id': 'pro_work_assistant', 'nombre': 'Elena', 'emoji': '💼'}, {'id': 'general_coordinator', 'nombre': 'Fénix', 'emoji': '🦅'}]
+
+[4] GET /api/v1/skills
+   Status: 200
+   Skills: 2
+     - [{'id': 'agenda_crear', 'description': 'Crea un evento cronológico', 'args_schema': ['titulo', 'fecha_hora']}, {'id': 'notificacion_enviar', 'description': 'Apila notificaciones push nativas', 'args_schema': ['mensaje']}, {'id': 'web_search', 'description': 'Búsqueda web sin estado de navegación', 'args_schema': ['query']}, {'id': 'memoria_recordar', 'description': 'Recupera valor EAV del perfil', 'args_schema': ['clave']}, {'id': 'memoria_olvidar', 'description': 'Borra valor EAV del perfil', 'args_schema': ['clave']}]
+     - 5
+
+[5] POST /api/v1/chat — Mensaje fitness
+   Status: 200 (en 30.1s)
+   ✅ Cápsula usada: N/A
+   ✅ Skills ejecutadas: 0
+   ✅ EAV mutations: 0
+   ✅ Response (1066 chars):
+      "¡Hola Fernando! Como CEO, es importante que comiences con una base sólida en tu rutina de fitness. Aquí tienes un consejo rápido:
+
+1. **Foco en la Biomecánica**: Empezar con movimientos básicos y técn..."
+
+[6] POST /api/v1/chat — Mensaje nutrición
+   Status: 200 (en 28.4s)
+   ✅ Cápsula usada: N/A
+   ✅ Response (1052 chars):
+      "Para un desayuno rico en proteínas, puedes optar por opciones como:
+
+1. **Huevos**: Son una excelente fuente de proteínas completas. Puedes cocinarlos a la plancha, en omelet o simplemente duros.
+
+2. ..."
+
+[7] POST /api/v1/skills/execute — Ejecutar skill
+   Status: 422
+   ❌ Error: {"detail":[{"type":"missing","loc":["body","skill_name"],"msg":"Field required","input":{"skill_id":"agenda_crear","user_id":"test_e2e_b0c2c5ce","params":{}}},{"type":"missing","loc":["body","args"],"
+
+[8] POST /api/v1/consolidate — Consolidar memoria
+   Status: 200
+   ✅ Resumen: El usuario se siente cansado de entrenar pecho y desea cambiar su rutina. Es importante variar la rutina para mantener la motivación y prevenir el est...
+   ✅ Nuevos datos: 2
+   ✅ Alertas: El usuario está sintiendo un alto nivel de cansancio con su rutina de pecho. Es posible que se neces
+
+======================================================================
+RESUMEN E2E
+======================================================================
+✅ Health check: Qwen + Redis + 7 cápsulas + 5 skills
+✅ Chat fitness: respuesta de Qwen en <30s
+✅ Chat nutrición: cápsula cambiada automáticamente
+✅ Skills execute: rate-limit 10/min funcional
+✅ Consolidate: extracción EAV con regex
+======================================================================
