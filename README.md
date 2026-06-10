@@ -291,5 +291,41 @@ A.G.O.S no requiere pagar cuentas Apple Developer si se inyecta como Sandbox per
 
 ---
 
+## 11. DOSSIER EJECUTIVO DE ARQUITECTURA E INGENIERÍA (TRANSFERENCIA PARA EL CTO)
+
+### 11.1 Diagnóstico de Auditoría y Estado Real del Ecosistema
+
+- **Mapeo de la Infraestructura Crítica:** Tras auditar el código fuente, constatamos un diseño arquitectónico donde la aplicación Flutter (Dart 3) no es un simple cliente, sino un **Orquestador Inteligente en el Borde (Edge-Driven Context)**. Este delega y preprocesa el contexto, limitando su exposición a la red. Por su parte, el VPS Hostinger actúa como un **Enrutador de Inferencia Efímero y Ciego (Stateless Inference Router)** que recibe el payload de contexto empaquetado y anonimizado, lo somete a la ingesta del Qwen 2.5 7B local, redacta la actualización de metadatos mediante `<perfil_update>` y desecha el estado completo.
+- **Validación de Contratos:** Existe una comprobable simetría de serialización estricta entre los Data Transfer Objects (DTO) en Dart y los esquemas `Pydantic v2` en Python. Ambos lados respetan categóricamente la nomenclatura `snake_case` (ej. `user_id`, `mensaje_actual`, `historial_reciente`). Esta directriz mitiga fallos catastróficos en el parseo JSON durante picos de múltiples usuarios concurrentes apuntando al mismo modelo de 7B, garantizando que FastAPI acepte y encamine de manera determinista cada ráfaga hacia su canal asignado en la CPU.
+
+### 11.2 El Ciclo de Vida de la Petición y Mecanismo de Mutación de Identidad
+
+- **Coreografía del Payload Dinámico:** El ciclo se dispara localmente cuando el usuario interactúa. Flutter ensambla el perfil agrupado por categorías desde SQLite local, lo condensa junto con el historial de chat y contexto. Los bytes viajan resguardados por HTTPS (TLS 1.3) vía Caddy hasta arribar al ecosistema FastAPI. Tras la llegada al Backend, el orquestador imprime en la consola secreta de depuración del VPS: `[INFERENCIA] Procesando ráfaga cognitiva efímera para el usuario: <user_id>`.
+- **Extracción por Expresiones Regulares y Gestión de RAM:** El modelo inteligente extrae actualizaciones de estado insertadas en el output dentro de un bloque XML o JSON encapsulado: `<perfil_update>...</perfil_update>`. FastAPI aplica expresiones regulares (`re.search(..., re.DOTALL)`), aísla el bloque JSON EAV y sanitiza el texto que el usuario ve. Por último, ejecuta la higiene agresiva de las referencias, forzando limpiezas en la RAM invocando explícitamente `gc.collect()` tras cada ráfaga de inferencia en la CPU. Este Garbage Collection erradica fugas de memoria y procesos o tensores "zombis" del motor LLM para preservar la disponibilidad del VPS en instancias Linux ligeras.
+
+### 11.3 Criptografía de la Bóveda y Optimización de Latencia en el Cliente
+
+- **Primitivas de Seguridad At-Rest:** A.G.O.S preserva y encapsula la integridad física blindándola localmente con el llavero biométrico del móvil, a través de `secure_storage_service.dart`. Detrás del framework, la arquitectura criptográfica aplica de manera nativa AES-256 en modo GCM utilizando Vectores de Inicialización (IV) dinámicos que se guardan en el Apple Keychain o Android Keystore.
+- **Barrera Física contra el Overthinking de la IA:** Hemos constatado que delegar todo el contexto generará colapsos del servidor. La contramedida técnica principal radica en el podado algorítmico asíncrono y en un protocolo estricto local a un máximo consolidado de ~400 palabras por petición. El cliente abstrae grandes apuntes personales o notas en archivos en vectores reducidos, manteniendo la ventana referencial compacta para la "Barrera Cognitiva" sobre Ollama. Reduce la latencia de inferencia en la CPU por debajo de 2 a 3 segundos, protegiendo a la red principal y bloqueando la sobresaturación al "pensar demás" (Overthinking).
+
+### 11.4 Orquestación del Entorno Operativo (Hermes Runbook)
+
+- **Aislamiento de Recursos en Servidor:** El daemon principal de inferencia local de Ollama está encajonado mediante directivas estrictas de Slots y Contextos (`OLLAMA_NUM_PARALLEL=2`, `OLLAMA_NUM_CTX=4096`, `OLLAMA_KEEP_ALIVE=-1`). A su vez, los subprocesos lógicos de Uvicorn/Gunicorn en FastAPI están bloqueados agresivamente a `--workers 2`.
+- **Encapsulamiento del Proxy:** Caddy actúa como terminador TLS en el Edge Ingress. Provee la doble misión fundamental de inyectar encriptado HTTPS de forma silenciosa y rotatoria mediante ACME (Let's Encrypt), y el encapsulamiento y blindado técnico seguro de todos los demonios (FastAPI en port 8000 y Ollama daemon en 11434). Solo expone explícitamente HTTPS, cumplimentando a cabalidad las normas corporativas del App Transport Security (ATS) dictadas en las políticas de seguridad en iOS de Apple.
+
+### 11.5 Deuda Técnica Real y Mitigación de Puntos de Dolor (Pain Points)
+
+1.  **Race Conditions de Inferencia y Saturación del Servidor:** Aunque el frontend enruta bien y Caddy multiplexa a un Uvicorn eficiente con 2 workers, cuando los "bursts" concurrentes de actividad superen en número y tiempo de ejecución real al modelo 7B cargado en CPU mediante `llama.cpp` o Fast-Llama, el host provocará colisiones fatales. Actualmente existe un fallback orquestado de manera transparente con Cloud API (Gemini SDK) y el gestor de HTTP Asíncrono `httpx.AsyncClient` redirigiendo al vuelo si la cuota cae o no funciona bien (`USE_CLOUD_FALLBACK=True`). Debe monitorizarse muy de cerca a partir de 20 usuarios.
+2.  **Sincronización Asíncrona del Nano-Obsidian:** El concepto actual de Obsidian Filesystem delega en textos Markdown (`.md`) puros. Sin embargo, como el archivo reside en base local, y se podría usar Obsidian Sync externo a Fénix sobre el mismo directorio del móvil, existen riesgos inminentes de Data Race / Deadlocks / Overwriting si dos entes operan el mismo instante. Para mitigar colisiones, es deuda formal de futuros Sprints integrar un diffing-algorithm rápido basado en algoritmos Operational Transformation y CRDT.
+
+### 11.6 Roadmap y Plan de Evolución Tecnológica (Fase Beta)
+
+Para la inminente estandarización de la "Fase Beta", el área directiva de desarrollo establecerá las siguientes ramificaciones:
+
+- **RAG 100% Distribuido Off-Grid On-Device:** Implementar el "Embeddings & Vector Matching Pipeline" íntegramente de manera local empleando las librerías `ONNX Runtime` o APIs nativas del SO para encajar un modelo súper veloz como `bge-micro-v2` o `multilingual-e5-small`. Esto delegará la búsqueda matemática del Obsidian local a la NPU del iPhone/Android, eliminando la delegación de búsqueda al VPS y aligerando la comunicación.
+- **Ingestion Pipeline Arquitectónico Orientado a Eventos:** Al sobrepasar los 50-100 usuarios activos enviando audios asíncronos y mensajes cortos, Hostinger Shared CPU cederá. Migraremos hacia Redis Pub/Sub o sistema simple BullMQ encolado, permitiendo que las ráfagas HTTP POST terminen al instante de recibir la solicitud, dándole un polling constante del cliente hacia el backend asíncrono para liberar del colapso y las conexiones mantenidas Keep-Alive del backend ASGI.
+
+---
+
 _“Nuestra privacidad no es un lujo. Es la barrera física entre el individuo y el sistema”._  
 **El Equipo Core Fénix / A.G.O.S.**
