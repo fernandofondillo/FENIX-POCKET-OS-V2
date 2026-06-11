@@ -231,3 +231,64 @@ El comportamiento analítico pasivo está enriquecido con agentes de Tool-Use pr
 *   **Extractor Interceptor Térmico:** `SkillExtractor.extract_and_execute_skills` actúa como barrera intermedia Regex. Antes de retornar la respuesta limpia al Usuario, Python audita la generación en busca de estructuras exclusivas: `<skill name="web_search" args='{"query":"..."}' />`.
 *   **Concurrent Handler:** Si coincide, ejecuta en el mismo bucle de evento de FastAPI en segundo plano (`skills_service.py`), limpia todo el "código sucio" del parser de Llama, e inserta métricas estructuradas y el resultado lógico en la payload final HTTP 200 hacia Dart. 
 *   **Feedback Front-End:** El cliente Dart lee que la matriz `executed_skills` de la petición no está vacía y pinta indicadores UX limpios. "A.G.O.S ha generado un evento nuevo de Agenda", manteniendo el acoplamiento Zero-Knowledge entre Flutter (vista) y Python (lógica agent). Todo ello filtrado por un Rate Limiting anti-spam local blindando el nodo central a un máximo de 10 tools invocables por minuto.
+
+---
+
+# 22. [ANEXO CTO] Topología de Interfaz y Mapeo Funcional (UI/UX)
+El ecosistema Fénix Pocket OS no es una "app de chat" genérica, sino una terminal operativa estructurada. A continuación, se desglosa funcional y técnicamente cada bloque visual de la aplicación móvil:
+
+### 22.1 WelcomeScreen (Bóveda de Onboarding Zero-Knowledge)
+*   **Funcionalmente:** Es la puerta blindada inicial. Solo aparece una vez tras la instalación. Recluta tres parámetros vitales de la psique del usuario: ID o Denominación, Rol o Profesión Activa, y una Metavariable (su objetivo vital máximo).
+*   **Técnicamente:** No usa peticiones TCP. El estado se valida con `TextEditingController` locales. Al invocar "ENGRAVE SYSTEM.IO", genera un UUIDv4 estocástico como ID interno de ecosistema y levanta la entropía del sistema en un `KeyPair` (master_key_aes256 de 32 bytes). Este secreto se escribe de forma irreversible en `flutter_secure_storage` (Keystore de iOS / EncryptedSharedPreferences en Android). Finalmente, escribe el arranque oficial a través de `PerfilDbService` en el bloque de SQLite local antes del reemplazo de ruta.
+
+### 22.2 ChatScreen -> Nexus Console (Núcleo de Interacción)
+*   **Funcionalmente:** Se asemeja a una terminal oscura y espartana (`Color(0xFF13131A)`). Muestra los diálogos asíncronos limpios entre el Usuario y A.G.O.S (El Agente Operativo). Cuenta con el campo de texto ("Integrar comando léxico") y los contenedores de los mensajes, sin parafernalias innecesarias.
+*   **Técnicamente:** Este widget actúa como el director de la orquesta síncrona/asíncrona. 
+    1. Administra el gestor de texto que interactúa con el State local (`setState`). 
+    2. Suscribe eventos táctiles del input inyectándolos de inmediato en `MemoryService` (gestionando la ventana deslizante FIFO de 8 instancias base).
+    3. Contiene la lógica de representación de interfaz donde, si un payload JSON regresivo de FastAPI inyecta propiedades en `executed_skills` o `perfil_update`, los renderiza de forma silenciosa para control visual, pero asegurando el encapsulamiento para que el usuario no lea el formato XML/JSON crudo.
+
+### 22.3 Subsistemas Visibles Condicionales (Skills y Notificaciones)
+*   **Funcionalmente:** Fénix carece del concepto clásico de "Barra de Navegación" (Bottom Nav Bar o Drawers) invasivos. Si el asistente infiere la necesidad de ejecutar comandos (como agendar una reunión o enviar push), no interrumpe el flujo con pantallas enteras de configuración, sino que genera "Burbujas Analíticas" dentro del árbol visual del chat.
+*   **Técnicamente:** Integración con `push_service.dart`. Si A.G.O.S dictamina un recordatorio, enruta el JSON nativamente a `Local Notifications`. Esta abstracción mantiene un diseño minimalista donde todas las capacidades convergen puramente en texto, emulando la Terminal POSIX subyacente.
+
+---
+
+# 23. [ANEXO CTO] Pipeline de Flujo de Datos (Casuística End-To-End)
+
+Para comprender de modo definitivo el aislamiento de Fénix Pocket OS, observemos de principio a fin el flujo interno ante un requerimiento práctico y real del usuario.
+
+**Escenario Desencadenante:** 
+El usuario escribe un martes por la tarde en Nexus Console:
+> *"Ayer dormí fatal por estrés del trabajo y hoy me siento muy cansado. Mañana quiero empezar dieta keto, apúntamelo y busca en la web ideas para desayunar."*
+
+### Fase 1: Edge Computing & Interceptación (Dentro del Móvil)
+1.  **Validación y Sentiment (Flutter):** El usuario pulsa enviar. `EmotionDetector.dart` localmente procesa la cadena antes de que deje el teléfono. Detecta vocablos como "estrés", "cansado" asimilando la emoción predominante temporal: `ansiedad` (intensidad negativa).
+2.  **Ruteo Semántico Local (`CapsuleDetector`):** Detecta simultáneamente "dieta keto" y "trabajo". La función dictamina que este string se alinea primariamente con la cápsula cognitiva `nutricion_expert`.
+3.  **Compilación del Contexto del Dispositivo:** `MemoryService` suma este nuevo Prompt inyectándole silenciosamente los últimos metadatos del usuario persistidos en SQLite (Ej: "Usuario es Project Manager, Objetivo Dominante: Mejorar salud física").
+4.  **Generación de Request Híbrida TCP:** Se dispara hacia la nube un bloque seguro (HTTPS TLS v1.3).
+
+### Fase 2: Ingestion Server-Side (VPS FastAPI - En Memoria RAM)
+1.  **Llegada al EndPoint y Redis (Encolamiento):** Fast-API recibe el bloque en `/api/v1/chat`. Pydantic v2 corrobora que la firma de datos sea válida. Envía el trabajo al entorno `Arq` montado sobre la RAM pura de `Redis` para evitar bloqueos del framework y retorna instantáneamente un "Job ID HTTP 202" al Flutter (que empieza a interrogar mediante Long-Polling).
+2.  **Orquestación de Identidad Sistémica (`InferenceRouter`):** El worker consume la tarea. Pasa el mensaje a Python leyendo que proviene de `nutricion_expert`. El servidor entonces asimila una pre-carga del Prompt del Sistema forzando al LLM a comportarse como un experto clínico en bioquímica y dieta cetogénica.
+
+### Fase 3: Inferencia Matemática Estricta (llama.cpp)
+1.  **Inferencia en Bucle Cerrado local:** El mensaje es transmitido vía HTTP efímero 127.0.0.1:8090 hacia el motor fundacional (`qwen2.5-7b-instruct.Q4_K_M.gguf`).
+2.  **Generación Multipropósito del LLM:** El modelo redacta la solución a la usanza humana, pero dada sus System Rules estrictas, inyecta además marcadores técnicos crudos en la propia secuencia tokenizada:
+    ```text
+    "Entiendo perfectamente el cuadro de estrés crónico, reducir la carga glucémica ayudará."
+    <skill name="web_search" args='{"query": "desayuno dieta keto rápido energía"}' />
+    <perfil_update>{"categoria": "salud", "clave": "estado_sueno", "valor": "insomnio correlacionado a estres laboral"}</perfil_update>
+    ```
+
+### Fase 4: Post-Procesamiento, Extracción y Sublimación (VPS)
+1.  **Regex Audit y Tool-Use (`SkillExtractor`):** FastAPI recibe este monstruo lexicográfico. Las funciones Lambda Regex intervienen masivamente eliminando todo el XML/JSON del texto resultante para que el usuario solo lea el lenguaje natural.
+2.  **Ejecución Paralela de Skills:** Antes de devolver respuesta, FastAPI lee el llamado interno de la Skill de `<web_search>`. Hace la llamada de búsqueda de las recetas, resume los resultados, y anexa un bloque JSON dictando que la habilidad `web_search` ha sido ejecutoriada con éxito.
+3.  **Encapsulado Final y Depuración:** FastAPI consolida el objeto. Flutter (en su polling cíclico) recibe un estado HTTP 200 con todo resuelto. **Inmediatamente** el servidor web aplica `await redis.delete(job_id)` y delega `gc.collect()`. Su huella muere para siempre.
+
+### Fase 5: Render Ejecutivo Final y Persistencia de Identidad (Flutter)
+1.  **Deserialización Front-End:** Dart recibe el texto impecablemente limpio y las listas vacías o llenas de `perfil_update` y `executed_skills`.
+2.  **Operaciones Silentes de Backend Móvil:**
+    *   La app actualiza la UI mostrando el texto empático de A.G.O.S.
+    *   Sin que el usuario intervenga, la lista `perfil_update` viaja a `PerfilDbService`. Esto desencadena una re-escritura mutante en SQLite local (`upsertEav`), actualizando el paradigma "salud" de la Bóveda del dispositivo con su reciente cuadro de insomnio. Para futuras consultas, el agente recordará mágicamente esta dolencia sin conexión al cloud.
+    *   Como hubo una "Skill" ejecutoriada, el `SkillsService.dart` lo audita en `SharedPreferences` garantizando un historial inalterable para trazabilidad del propietario.
