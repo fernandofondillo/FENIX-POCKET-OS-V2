@@ -159,3 +159,39 @@ El sistema operativo de IA enlazado está gobernado por el testamento atemporal 
 # 19. Despliegue de Contacto y Equipo A.G.O.S
 * Autoridad Principal de Infraestructura (Implementación Core): `fernandofondillo`
 * Representante Jefe Técnico Gubernamental (CTO) y Entidad Auditora: `fernando.ruedaparra1963@gmail.com`
+
+---
+
+# 20. [ANEXO iOS] Setup Rápido (Menos de 30 minutos)
+**Fénix Pocket OS** ha sido estructurado para ejecutarse de forma nativa en un dispositivo físico iPhone, utilizando la pureza de la compilación de Flutter y Swift. A continuación se anexa la autoguía para compilar y ejecutar el ecosistema de comunicación en **iOS 15.0+** salvando todas las barreras arquitectónicas de Apple.
+
+### 20.1 Auditoría de Dependencias para iOS
+*   **Compatibles Nativamente:** `sqflite`, `encrypt`, `dio`, `http`, `uuid`, etc., compilan de forma 100% nativa hacia Objective-C/Swift vía el motor lógico de Flutter.
+*   **flutter_secure_storage:** Requiere que el `Podfile` de iOS apunte **estrictamente a iOS 12.0 o superior**. En este proyecto imponemos **15.0** por requerimientos de Background Tasks.
+*   **tflite_flutter:** Delega subprocesos matemáticos a la NPU de Apple Silicon / A-Bionic Series. Requiere compatibilidad base `arm64`.
+
+### 20.2 Instrucciones de Despliegue Zero-Friction
+Ejecuta el script automatizado proveído en la raíz del repositorio. Este script inyectará la carpeta `/ios` y modificará los binarios del proyecto (incluyendo `Info.plist`, `Podfile` y `.swift`) saltando la burocracia habitual de Xcode.
+
+1.  **Ejecución del Script (macOS Requerido):**
+    ```bash
+    chmod +x ios_setup_fenix.sh
+    ./ios_setup_fenix.sh
+    ```
+2.  **Preparación del iPhone:**
+    *   Conecta el dispositivo vía USB al Mac.
+    *   Habilita el modo de desarrollador *(Ajustes > Privacidad y seguridad > Modo de desarrollo)*.
+3.  **Configuración de Identidad en Xcode:**
+    *   Abre el workspace: `open ios/Runner.xcworkspace`
+    *   Haz clic en el proyecto raíz "Runner" en el panel izquierdo.
+    *   En la pestaña "Signing & Capabilities", asigna tu "Team" (Tu cuenta de Apple Developer asociada al ID de Apple).
+    *   Asegúrate de que el "Bundle Identifier" tenga un dominio único (ej. `com.tu_nombre.fenix`).
+4.  **Enlace con Backend Local (Atención Ciberseguridad):**
+    *   Actualmente el backend local y la API devuelven al `127.0.0.1` de la máquina. El iPhone **NO** reconocerá esto.
+    *   Averigua la IP interna del Mac (`ipconfig getifaddr en0` en terminal, ej. `192.168.1.50`).
+    *   Arranca FastAPI enlazado a `0.0.0.0` (`uvicorn app.main:app --host 0.0.0.0 --port 8000`).
+    *   En el código Flutter (si utilizas `ApiService(baseUrl: "...")`), sustituye `127.0.0.1` por la IP local del Mac `192.168.1.50`.
+5.  **Compilación y Flujo Final:**
+    *   Presiona Cmd+R o `flutter run -d <id_del_iphone>` en la terminal.
+    *   Confía en el certificado en tu iPhone *(Ajustes > General > Gestión de VPN y dispositivos)*.
+    *   El Sistema Operativo A.G.O.S ya está enlazado a la matriz de tu teléfono.
