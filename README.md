@@ -190,3 +190,44 @@ Ejecuta el script combinado provisto en la raíz del repositorio (`setup_mobile_
     *   Activa **Depuración USB** en *Opciones de Desarrollador* de tu Android.
     *   Conecta vía USB y autoriza huella de PC.
     *   Ejecuta: `flutter run -d <id_del_android>`
+
+---
+
+# 21. [ANEXO CTO] Auditoría y Deep-Dive Técnico de Arquitectura
+
+El presente bloque técnico conforma el mapa de ruta definitivo para la Dirección Técnica. Desgrana los mecanismos en crudo y la algoritmia profunda que sostiene el núcleo Soberano de Fénix Pocket OS. Ningún comportamiento aquí es fortuito; cada abstracción está esculpida en favor de la privacidad local paramétrica y la ejecución asíncrona eficiente.
+
+### 21.1 Motor de Enrutamiento: Las Cápsulas de Identidad Cognitivas
+A diferencia de los asistentes LLM comerciales monolíticos, Fénix delega el pre-procesamiento del contexto al dispositivo cliente (Flutter).
+El `CapsuleDetector` opera mediante búsqueda léxica y probabilística de O(N) local cruzando el input del usuario con arrays de *keywords* (tags) específicos.
+
+**El Flujo Funcional:**
+1.  **Detección en Crudo:** Antes de que un paquete abandone el móvil, Dart intercepta cadenas de texto. Si el usuario menciona "hipertrofia" o "macros", el detector clasifica el intento en la cápsula `fitness_expert` o `nutricion_expert`.
+2.  **Inyección en Bóveda:** En vez de reenviar todo el Prompt histórico gigante al VPS, Fénix etiqueta el requerimiento. 
+3.  **Despliegue de System Prompt (VPS):** Al llegar a `InferenceRouter`, el servidor (sin memorizar nada) adapta drásticamente el *System Prompt* de `llama.cpp` basándose puramente en la cápsula indicada, restringiendo la respuesta y garantizando enfoque láser sin contaminación tópica.
+*Excepción O(1):* Si ninguna keyword triggerea las 5 cápsulas primarias (Fitness, Nutrición, Zen, Elderly, Biohacking o Pro-Work), el bloque cae suave e inmediatamente a `general_coordinator`, un orquestador híbrido generalista puro.
+
+### 21.2 Telemetría Zero-Knowledge y Flujo Stateless VPS
+El mayor baluarte del ecosistema reside en la volatilidad de la RAM de nuestro orquestador central (FastAPI).
+
+**Desplome de Transacciones (Queue):**
+*   **Aislamiento Redis:** Para prevenir caída por Time-Outs si 5000 peticiones impactan el servidor GPU, la ingesta es derivada a `Arq Worker` vía encolamiento Redis. El terminal móvil recibe de inmediato un asíncrono HTTP 202 con un Job-ID (UUID).
+*   **Wipe-Activo:** A través del Long-Polling, una vez terminada la inferencia sobre `llama-server`, las variables temporales se guardan brevemente en memoria Redis. Tan pronto como el terminal móvil hace FETCH (con éxito consumiendo su JSON), Redis aniquila el Job automáticamente (`await redis.delete()`).
+
+**Liberación de Memoria Térmica (`gc.collect()`):**
+El marco está adaptado para invocar a bajo nivel los desmanteladores de memoria de Python. No existen DBs relacionales ni logs persistentes en el VPS (a excepción de los prints efímeros de JournalCTL a la salida puramente estándar, los cuales no graban IDs unívocos sino flujos abstractos). 
+
+### 21.3 Estructura Técnica "Nano-Obsidian" y Subsistemas de Memoria
+El proyecto no acopla una solitaria "Memoria". Orquesta una trinidad estricta segmentando los tiempos de retención:
+
+1.  **Buffer Volátil FIFO (RAM):** Controlado por `memory_service.dart`. Solamente retiene en Context Layout los últimos 8 mensajes. Evita una implosión OOM (Out Of Memory) tanto en Flutter como en la ventana de contexto de `llama.cpp` (que usualmente caparía en 4096 o 8192 tokens).
+2.  **Identidad Relacional (SQLite EAV):** El `PerfilDbService` consolida el Entity-Attribute-Value. No es un log secuencial, sino una metamorfosis. Python interviene la respuesta textual, inserta el tag XML/JSON `<perfil_update>...` asimilando descubrimientos (ej: "Sufre ansiedad moderada la noche de los lunes"). Flutter recibe, intercepta antes de pintar al canal de Chat UI y escribe en el metal de SQLite.
+3.  **Red "Nano-Obsidian" (RAG Embeddings):** Archivos cognitivos densos (Long-Term Memory). Implementado a nivel de scaffolding en `LocalEmbeddingService`. El terminal Flutter mapea arrays matemáticos de los "Recuerdos o Notas" vía `TFLite` (`bge-micro-v2` modelo cuantizado float32) y almacena sus vectores. A la hora de consultar dudas técnicas o vitales históricas profundas, se rastrea la cercanía coseno matemática en el móvil y se inyecta su resumen al prompt, dándole al LLM omnipresencia temporal sin que el VPS maneje los RAG documents.
+
+### 21.4 Arquitectura de Skills y Regex Extractor
+El comportamiento analítico pasivo está enriquecido con agentes de Tool-Use proactivos dictaminados directamente por el backend para mantener al LLM aislado de la UI nativa.
+
+*   **Esquemas Estrictos (Pydantic V2):** En `skill_catalogue.py` residen los moldes de validación férreos. Operatoria O(1).
+*   **Extractor Interceptor Térmico:** `SkillExtractor.extract_and_execute_skills` actúa como barrera intermedia Regex. Antes de retornar la respuesta limpia al Usuario, Python audita la generación en busca de estructuras exclusivas: `<skill name="web_search" args='{"query":"..."}' />`.
+*   **Concurrent Handler:** Si coincide, ejecuta en el mismo bucle de evento de FastAPI en segundo plano (`skills_service.py`), limpia todo el "código sucio" del parser de Llama, e inserta métricas estructuradas y el resultado lógico en la payload final HTTP 200 hacia Dart. 
+*   **Feedback Front-End:** El cliente Dart lee que la matriz `executed_skills` de la petición no está vacía y pinta indicadores UX limpios. "A.G.O.S ha generado un evento nuevo de Agenda", manteniendo el acoplamiento Zero-Knowledge entre Flutter (vista) y Python (lógica agent). Todo ello filtrado por un Rate Limiting anti-spam local blindando el nodo central a un máximo de 10 tools invocables por minuto.
