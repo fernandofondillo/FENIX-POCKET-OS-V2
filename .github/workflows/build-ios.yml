@@ -1,0 +1,45 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+      
+      - name: Install dependencies
+        run: |
+          flutter pub get
+      
+      - name: Build iOS (no codesign)
+        run: |
+          flutter build ios --release --no-codesign --no-tree-shake-icons
+        env:
+          FLUTTER_FORCE_INTL: 'true'
+      
+      - name: Package IPA
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r ../../../fenix-pocket-os-unsigned.ipa Payload
+          cd ../../..
+          ls -lh fenix-pocket-os-unsigned.ipa
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fenix-ios-unsigned
+          path: fenix-pocket-os-unsigned.ipa
+          retention-days: 7
