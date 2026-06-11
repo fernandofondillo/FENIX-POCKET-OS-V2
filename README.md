@@ -170,28 +170,23 @@ El sistema operativo de IA enlazado está gobernado por el testamento atemporal 
 *   **flutter_secure_storage:** Requiere que el `Podfile` de iOS apunte **estrictamente a iOS 12.0 o superior**. En este proyecto imponemos **15.0** por requerimientos de Background Tasks.
 *   **tflite_flutter:** Delega subprocesos matemáticos a la NPU de Apple Silicon / A-Bionic Series. Requiere compatibilidad base `arm64`.
 
-### 20.2 Instrucciones de Despliegue Zero-Friction
-Ejecuta el script automatizado proveído en la raíz del repositorio. Este script inyectará la carpeta `/ios` y modificará los binarios del proyecto (incluyendo `Info.plist`, `Podfile` y `.swift`) saltando la burocracia habitual de Xcode.
+### 20.2 Instrucciones de Despliegue Zero-Friction (Móviles Reales)
+Ejecuta el script combinado provisto en la raíz del repositorio (`setup_mobile_platforms.sh`). Este script regenera las carpetas `android` y `ios` directamente, incrustando los permisos en ambos sistemas (minSdkVersion 23, Info.plist, ClearTextTraffict, Podfile, AppDelegate.swift).
 
-1.  **Ejecución del Script (macOS Requerido):**
+1.  **Ejecución del Script Matrix:**
     ```bash
-    chmod +x ios_setup_fenix.sh
-    ./ios_setup_fenix.sh
+    chmod +x setup_mobile_platforms.sh
+    ./setup_mobile_platforms.sh
     ```
-2.  **Preparación del iPhone:**
+2.  **Preparación del Backend para Red Local:**
+    *   Arranca FastAPI en la máquina enlazado a todas las redes: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+    *   Abre `lib/core/app_config.dart` en Flutter, cambia `usePhysicalIp = true` e ingresa la IP local WiFi de tu ordenador (Ej: `192.168.x.x`).
+3.  **Compilación iPhone Físico (macOS requerido):**
     *   Conecta el dispositivo vía USB al Mac.
-    *   Habilita el modo de desarrollador *(Ajustes > Privacidad y seguridad > Modo de desarrollo)*.
-3.  **Configuración de Identidad en Xcode:**
     *   Abre el workspace: `open ios/Runner.xcworkspace`
-    *   Haz clic en el proyecto raíz "Runner" en el panel izquierdo.
-    *   En la pestaña "Signing & Capabilities", asigna tu "Team" (Tu cuenta de Apple Developer asociada al ID de Apple).
-    *   Asegúrate de que el "Bundle Identifier" tenga un dominio único (ej. `com.tu_nombre.fenix`).
-4.  **Enlace con Backend Local (Atención Ciberseguridad):**
-    *   Actualmente el backend local y la API devuelven al `127.0.0.1` de la máquina. El iPhone **NO** reconocerá esto.
-    *   Averigua la IP interna del Mac (`ipconfig getifaddr en0` en terminal, ej. `192.168.1.50`).
-    *   Arranca FastAPI enlazado a `0.0.0.0` (`uvicorn app.main:app --host 0.0.0.0 --port 8000`).
-    *   En el código Flutter (si utilizas `ApiService(baseUrl: "...")`), sustituye `127.0.0.1` por la IP local del Mac `192.168.1.50`.
-5.  **Compilación y Flujo Final:**
-    *   Presiona Cmd+R o `flutter run -d <id_del_iphone>` en la terminal.
-    *   Confía en el certificado en tu iPhone *(Ajustes > General > Gestión de VPN y dispositivos)*.
-    *   El Sistema Operativo A.G.O.S ya está enlazado a la matriz de tu teléfono.
+    *   En "Signing & Capabilities", activa tu "Team" Apple Developer.
+    *   Ejecuta: `flutter run -d <id_del_iphone>` (y aprueba el trust certificate en *Ajustes de iOS > General*).
+4.  **Compilación Android Físico:**
+    *   Activa **Depuración USB** en *Opciones de Desarrollador* de tu Android.
+    *   Conecta vía USB y autoriza huella de PC.
+    *   Ejecuta: `flutter run -d <id_del_android>`
