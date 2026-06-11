@@ -292,3 +292,51 @@ El usuario escribe un martes por la tarde en Nexus Console:
     *   La app actualiza la UI mostrando el texto empático de A.G.O.S.
     *   Sin que el usuario intervenga, la lista `perfil_update` viaja a `PerfilDbService`. Esto desencadena una re-escritura mutante en SQLite local (`upsertEav`), actualizando el paradigma "salud" de la Bóveda del dispositivo con su reciente cuadro de insomnio. Para futuras consultas, el agente recordará mágicamente esta dolencia sin conexión al cloud.
     *   Como hubo una "Skill" ejecutoriada, el `SkillsService.dart` lo audita en `SharedPreferences` garantizando un historial inalterable para trazabilidad del propietario.
+
+---
+
+# 24. [ANEXO CTO] Interfaces de Usuario, UX y Branding (FAQ)
+
+### 24.1 Detalles Funcionales y de Interacción Visual
+
+#### 24.1.1 ¿Cómo indica visualmente qué cápsula está activa durante la conversación?
+**[DEDUCIDO]** Actualmente no existe un badge, borde o avatar explícito en la UI (AppBar superior indica siempre "Nexus Console"). El ruteo semántico opera silenciosamente a nivel de código (`CapsuleDetector`), por lo que el usuario no visualiza marcadores intrusivos durante el flujo de texto estándar.
+
+#### 24.1.2 Cuando se ejecuta una skill (ej. web_search), ¿dónde aparece el resultado?
+**[DEDUCIDO]** Las ejecuciones analíticas se integran en el hilo del chat mediante **"Burbujas Analíticas"**. No se despliegan en paneles laterales ni Toasts volátiles, sino como inyecciones dentro del propio árbol visual cronológico de la conversación, respetando la estructura limpia y lineal.
+
+#### 24.1.3 ¿El chat tiene algún comando especial o gesto para abrir el menú?
+**[NO DOCUMENTADO]** En la estructura central actual compartida de `ChatScreen`, no hay side-drawers (barras laterales), botones "hamburguesa" ni directrices explícitas como un comando deslizante (swipe) o un comando `/menu` configurado.
+
+#### 24.1.4 ¿El placeholder del input es "Integrar comando léxico" u otro texto?
+Es exactamente **"Integrar comando léxico..."**. El color del placeholder es blanco atenuado (`Colors.white30`).
+
+#### 24.1.5 ¿Qué pasa si el usuario intenta escribir antes de montar ninguna cápsula?
+**[DEDUCIDO]** Dado que el `WelcomeScreen` fuerza la recopilación de datos obligatorios, no es posible acceder al `ChatScreen` vacío. Si un prompt no coincide con las palabras clave de cápsulas expertas durante el ciclo de vida normal, operará automáticamente utilizando la figura de **Fénix Base (Coordinador General)** sin interrumpir el servicio ni arrojar errores.
+
+### 24.2 Tono, Branding y Estética Global
+
+#### 24.2.1 ¿"Saludos, soberano" es el saludo literal canónico?
+No. El saludo de inicialización persistente y canónico está establecido como:
+`[CORE_SYNC_OK] Soy tu encapsulado A.G.O.S local. Mis tensores no persisten nada de ti una vez apagada la RAM. ¿Sobre qué vector operamos?`
+
+#### 24.2.2 ¿Fénix usa emojis o es 100% texto sobrio?
+**[DEDUCIDO]** Carece del uso proactivo de emojis. La configuración estilística obliga al 100% de sobriedad emulando estéticas de Terminal UNIX o protocolos asíncronos austeros.
+
+#### 24.2.3 ¿"ARQUITECTURA SOBERANA"... es el header fijo en TODAS las pantallas o solo en el chat?
+**[DEDUCIDO]** No. La pantalla principal mantiene un AppBar minimalista cuyo título centrado es puramente **"Nexus Console"**.
+
+#### 24.2.4 ¿Hay algún "claim" o subtítulo fijo en el footer de la app?
+**[DEDUCIDO]** Falso. El extremo inferior o footer de la app está dominado enteramente por el área de inyección de comandos (TextField con color `0xFF0D0D12`). No hay "claims" comerciales.
+
+#### 24.2.5 ¿El logo es un asset o se dibuja por código?
+Se dibuja nativamente por código de abstracción gráfica mediante vectores de Material, empleando de facto: `Icon(Icons.shield_moon_outlined, size: 72, color: Color(0xFF4C8CFA))`.
+
+#### 24.2.6 ¿La tipografía es una fuente custom o la del sistema?
+Fénix utiliza una fuente custom denominada **'Inter'**, incrustada en el `ThemeData` fundacional del widget raíz `MaterialApp`.
+
+#### 24.2.7 ¿Hay animaciones de transición entre pantallas?
+Se aplican silenciosamente las transiciones core predeterminadas del framework (`MaterialPageRoute`), traduciéndose en una animación slide horizontal en el entorno iOS o una escalada tipo fade-zoom clásica en Android al completar el "ENGRAVE SYSTEM.IO".
+
+#### 24.2.8 Telemetría visible (SMARTPHONE MEMORY + STATELESS VPS):
+**[NO DOCUMENTADO]** La existencia o emplazamiento exacto de datos crudos sobre RAM o conexiones Socket no está implícita o descrita activamente en los módulos UI principales presentados al front (la barra superior solo dice "Nexus Console").
