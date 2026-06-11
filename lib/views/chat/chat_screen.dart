@@ -33,11 +33,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _api = ApiService(
-    baseUrl: 'https://roguish-degradedly-anjelica.ngrok-free.app',
+    baseUrl: 'https://roguish-degradedly-anjelica.ngrok-free.dev',
   );
   final _memory = MemoryService();
   final _skills = SkillsService(
-    baseUrl: 'https://roguish-degradedly-anjelica.ngrok-free.app',
+    baseUrl: 'https://roguish-degradedly-anjelica.ngrok-free.dev',
   );
   final _storage = const FlutterSecureStorage();
   final _db = PerfilDbService();
