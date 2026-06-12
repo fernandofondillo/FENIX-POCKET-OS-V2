@@ -405,3 +405,25 @@ Para asegurar el enrutamiento inquebrantable desde la bóveda hacia el clúster 
     *   `GET /api/v1/task/{task_id}` (Receptor Observador 800ms).
     *   `POST /api/v1/skills/execute` (Inyección Activa de Skills).
     *   `POST /api/v1/consolidate` (Módulo de Fusión en Batch).
+
+### 25.12 Guía de Implementación para el CTO (V6 Network & RAG)
+Para no perder el hilo de las recientes inyecciones arquitectónicas V6, aquí se detalla cómo el equipo debe interactuar con los nuevos componentes al integrar o hacer *deploy* de la aplicación:
+
+1. **Configuración del Punto Álgido (Paso Crítico para Compilar):**
+   Antes de generar el APK/IPA, **NUNCA** busques IPs repartidas por el código. Todo el direccionamiento de red está centralizado en un solo lugar.
+   *   **Archivo:** `lib/core/app_config.dart`
+   *   **Acción:** Reemplaza el string `apiBaseUrl` (actualmente en `https://xxxxx.ngrok-free.dev`) por la IP o túnel real del cluster FastAPI. 
+   
+2. **Manejo Correctilíneo del Payload:**
+   Si se altera el perfil o las habilidades, **NO** inyectes un `Map<String, dynamic>` crudo al servicio de API.
+   *   **Archivo:** `lib/models/payload_request.dart`
+   *   **Acción:** Utiliza siempre los nuevos modelos tipados `CapsulaActivaPayload` y `ContextoRagHibridoPayload`. La función `toJson()` forzará el *snake_case* esperado por los modelos Pydantic del backend sin fricciones de sintaxis entre Flutter y Python.
+
+3. **Orquestación UI Asíncrona (Chat y Subsistema Nano-Obsidian):**
+   *   **ChatScreen:** Ya no debes preocuparte por caídas de red ni estados infinitos. El *long-polling* y las excepciones (time-outs) son atrapados sutilmente por la UI mostrando avisos tácticos (como `[ERROR_LINK]`). 
+   *   **Nano-Obsidian:** Las nuevas vistas (Editor, Search, Documents locales) ya disparan el cifrado en `SecureStorageService` y la indexación embebida de `LocalEmbeddingService` simultáneamente, en el mismo *thread*. Mantenlas desacopladas; **no** envíes estos documentos al VPS. Son de exclusivo uso local (RAG Offline Zero-Knowledge).
+
+4. **Ajuste Concluyente del Ingestor LLM:**
+   El orquestador en el backend (FastAPI) ha incrementado su cuota de salida predeterminada, esto garantiza que las recolecciones complejas o respuestas largas no terminen cortadas.
+   *   **Archivo:** `app/services/inference_router.py` (*en el backend VPS*)
+   *   **Cambio consolidado:** `max_tokens` incrementado a 1024. No es necesario modificarlo vía remota por cada request, el límite intrínseco del VPS ya está preparado para los *prompts* ricos en contexto.
