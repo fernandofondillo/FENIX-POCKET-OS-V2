@@ -10,6 +10,10 @@ import '../../services/perfil_db_service.dart';
 import '../../services/api_service.dart';
 import '../../services/skills_service.dart';
 import '../../models/payload_request.dart';
+import '../../services/capsule_detector.dart';
+import '../../services/memory_service.dart';
+import '../../services/local_embedding_service.dart';
+import '../../services/secure_storage_service.dart';
 import '../obsidian/nano_obsidian_screen.dart';
 import '../skills/skills_screen.dart';
 
@@ -167,6 +171,7 @@ class _ChatScreenState extends State<ChatScreen> {
     '[CORE_SYNC_OK] Soy tu encapsulado A.G.O.S local. Mis tensores no persisten nada de ti una vez apagada la RAM. ¿Sobre qué vector operamos?'
   ];
   bool _isProcessing = false;
+  String _capsulaActiva = 'general_coordinator';
 
   void _enviarMensaje() async {
     final text = _textController.text.trim();
@@ -185,18 +190,39 @@ class _ChatScreenState extends State<ChatScreen> {
       await db.initDb();
       final identidad = await db.getPerfilCompleto();
       
+      _capsulaActiva = CapsuleDetector.detectar_capsula(text, capsula_anterior: _capsulaActiva);
+      
+      final memoryService = MemoryService();
+      await memoryService.init_memory();
+      final identityData = await memoryService.obtener_identidad_estructurada();
+      final historialUsuarioStr = identityData.entries.map((e) => '${e.key}: ${e.value}').join(', ');
+
+      final localEmbedding = LocalEmbeddingService();
+      await localEmbedding.init_model();
+      final queryVector = await localEmbedding.generar_vector(text);
+      final topK = await localEmbedding.buscar_top_k(queryVector, k: 3);
+
+      final secureStorage = SecureStorageService();
+      String expertoContext = '';
+      for (var item in topK) {
+        try {
+          final content = await secureStorage.readDecryptedMarkdown(item['doc_id']);
+          expertoContext += content.substring(0, min(200, content.length)) + '... ';
+        } catch (_) {}
+      }
+
       // Creamos un payload estrictamente tipado y empaquetado en snake_case al enviar al backend
       final payload = PayloadRequest(
         userId: userId,
         mensajeActual: text,
         perfilIdentidad: identidad,
         contextoRagHibrido: ContextoRagHibridoPayload(
-          historialUsuario: '',
-          conocimientoExperto: 'Conocimiento offline base.'
+          historialUsuario: historialUsuarioStr.isEmpty ? 'Ninguno' : historialUsuarioStr,
+          conocimientoExperto: expertoContext.isEmpty ? '' : expertoContext
         ),
         capsulaActiva: CapsulaActivaPayload(
-          id: 'CORE',
-          systemPrompt: 'Eres A.G.O.S, asistente seguro.',
+          id: _capsulaActiva,
+          systemPrompt: 'Eres A.G.O.S, asistente seguro operando como $_capsulaActiva.',
           allowedSkills: ['agenda_crear', 'web_search']
         ),
         historialReciente: []

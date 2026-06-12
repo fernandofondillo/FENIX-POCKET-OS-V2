@@ -98,8 +98,12 @@ class SecureStorageService {
 
   /// Operación I/O: Listar archivos de la Bóveda utilizando dart:io Directory (V6 Zero-Knowledge)
   Future<List<File>> listVaultFiles() async {
-    final vaultDir = await _getVaultDirectory();
-    final entities = vaultDir.listSync(recursive: false);
-    return entities.whereType<File>().toList();
+    try {
+      final vaultDir = await _getVaultDirectory();
+      final entities = vaultDir.listSync(recursive: false);
+      return entities.whereType<File>().toList();
+    } catch (e) {
+      return [];
+    }
   }
 }

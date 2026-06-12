@@ -41,7 +41,7 @@ class _NanoObsidianScreenState extends State<NanoObsidianScreen> {
     if (_vaultFiles.isEmpty) {
       return const Center(
         child: Text(
-          '[BÓVEDA VACÍA]\nNo hay registros cifrados en el dispositivo.',
+          'Bóveda vacía. Toca \'Editor\' para crear tu primer documento.',
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.white54, fontFamily: 'Inter'),
         ),

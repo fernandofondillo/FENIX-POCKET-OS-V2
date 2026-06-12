@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/local_embedding_service.dart';
+import '../../services/secure_storage_service.dart';
 
 class NoteSearchScreen extends StatefulWidget {
   const NoteSearchScreen({Key? key}) : super(key: key);
@@ -11,9 +12,28 @@ class NoteSearchScreen extends StatefulWidget {
 class _NoteSearchScreenState extends State<NoteSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final LocalEmbeddingService _embeddingService = LocalEmbeddingService();
+  final SecureStorageService _storageService = SecureStorageService();
   
   List<Map<String, dynamic>> _results = [];
   bool _isSearching = false;
+  bool _isVaultEmpty = false;
+  bool _isLoadingState = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkVaultState();
+  }
+
+  Future<void> _checkVaultState() async {
+    final files = await _storageService.listVaultFiles();
+    if (mounted) {
+      setState(() {
+        _isVaultEmpty = files.isEmpty;
+        _isLoadingState = false;
+      });
+    }
+  }
 
   Future<void> _performSearch() async {
     final query = _searchController.text.trim();
@@ -47,6 +67,20 @@ class _NoteSearchScreenState extends State<NoteSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingState) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+    
+    if (_isVaultEmpty) {
+      return const Center(
+        child: Text(
+          'Bóveda vacía. Toca \'Editor\' para crear tu primer documento.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white54, fontFamily: 'Inter'),
+        ),
+      );
+    }
+
     return Column(
       children: [
         Padding(
