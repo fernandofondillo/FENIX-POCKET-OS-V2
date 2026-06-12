@@ -340,3 +340,32 @@ Se aplican silenciosamente las transiciones core predeterminadas del framework (
 
 #### 24.2.8 Telemetría visible (SMARTPHONE MEMORY + STATELESS VPS):
 **[NO DOCUMENTADO]** La existencia o emplazamiento exacto de datos crudos sobre RAM o conexiones Socket no está implícita o descrita activamente en los módulos UI principales presentados al front (la barra superior solo dice "Nexus Console").
+
+---
+
+# 25. [ANEXO CTO] Evolución Zero-Knowledge (V2 a V6) - Roadmap Técnico
+
+La siguiente fase de desarrollo sube el ecosistema de Fénix Pocket OS a la versión V6, implementando una arquitectura de vanguardia en la preservación de identidad (Zero-Knowledge) y procesamiento asíncrono con estricta gobernanza sobre el payload de datos.
+
+### 25.1 Reglas del Payload (API Contract) Inquebrantables
+Para asegurar la viabilidad del puente Flutter-FastAPI, **nunca** se mutarán las llaves JSON fundamentales utilizadas en el tráfico TCP. Se consolida el formato **`snake_case` estricto** subyacente:
+- `user_id`: Identificador anonimizado inyectado desde la bóveda de iOS/Android.
+- `mensaje_actual`: Secuencia en texto plano introducida por el usuario soberano.
+- `perfil_identidad`: Extracción consolidada EAV enviada efímeramente.
+- `contexto_rag_hibrido`: Vectores Coseno inyectados como contexto semántico profundo.
+- `capsula_activa`: Puntero hacia el System Prompt condicional (`fitness_expert`, `general_coordinator`, etc).
+- `historial_reciente`: Array FIFO limitado a las últimas interacciones vivas en RAM.
+
+Cualquier mínima variación en el casing (ej. `userId` o `CapsulaActiva`) provocará interrupción de servicio en el nodo FastAPI, al no cumplir con el Pydantic Schema V2.
+
+### 25.2 Reutilización Máxima de Servicios Kernel
+En la V6, la adición de nueva algoritmia o servicios de metadatos/archivos **prohíbe la creación de instancias Dart redundantes**. Toda nueva capacidad analítica para operaciones en disco u ofuscación de metadatos locales debe alojarse parasitando las capas base estructuradas anteriormente:
+- **`secure_storage_service.dart`**: Cualquier requerimiento para listar archivos nativos (`dart:io Directory`), manejar caché o tokens será encapsulado obligatoriamente como métodos extendidos en esta clase.
+- **`local_embedding_service.dart`**: El scaffolding RAG.
+- **`perfil_db_service.dart`**: Todo lo relacionado con persistencia SQLite y EAV Mutante.
+
+### 25.3 Modo Zero-Knowledge
+Bajo el paraguas de integración V2 -> V6, todo código expuesto durante resoluciones o *skills* asume por defecto la incomprensión de contextos externos (FastAPI en su nodo es un cascarón vacío en cada iteración). Esto exige que el orquestador móvil pase cada parámetro crítico en tiempo de ejecución, cerrando brechas temporales y evitando el "Stateful Tracking" en el servidor.
+
+### 25.4 Listado de Archivos Cifrados (Mejora V6)
+Se ha implementado el método `listVaultFiles()` en `SecureStorageService` aprovechando `dart:io Directory`. Esto permite a la terminal listar dinámicamente los contenidos locales en disco (Nano-Obsidian) sin alterar la arquitectura original de servicios, permitiendo orquestar el RAG local u ofuscaciones sin delegarle archivos al API.
