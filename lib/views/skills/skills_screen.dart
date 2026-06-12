@@ -40,22 +40,42 @@ class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderSt
 
   Widget _buildDisponiblesTab() {
     final disponibles = [
-      'agenda_crear',
-      'notificacion_enviar',
-      'web_search',
-      'memoria_recordar',
-      'memoria_olvidar'
+      {'id': 'agenda_crear', 'desc': 'Inyección estructurada de eventos al calendario natal', 'version': 'v1.4'},
+      {'id': 'notificacion_enviar', 'desc': 'Pulsos de alerta háptica/visual al ecosistema OS', 'version': 'v2.1'},
+      {'id': 'web_search', 'desc': 'Rastreo perimetral DuckDuckGo Zero-Knowledge', 'version': 'v1.0'},
+      {'id': 'memoria_recordar', 'desc': 'Inyección y destilación en EAV Local Engine', 'version': 'v3.0'},
+      {'id': 'memoria_olvidar', 'desc': 'Purga criptográfica de rama léxica', 'version': 'v1.1'},
     ];
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
       itemCount: disponibles.length,
-      separatorBuilder: (_, __) => const Divider(color: Colors.white12),
       itemBuilder: (context, index) {
-        return ListTile(
-          leading: const Icon(Icons.build_circle_outlined, color: Color(0xFF4C8CFA)),
-          title: Text(disponibles[index], style: const TextStyle(color: Colors.white, fontFamily: 'Inter')),
-          subtitle: const Text('Skill Inyectable Automática', style: TextStyle(color: Colors.white54, fontFamily: 'Inter', fontSize: 12)),
-          trailing: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
+        final sk = disponibles[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A24),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white12)
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            leading: const Icon(Icons.hub_outlined, color: Color(0xFFD4AF37), size: 28),
+            title: Text(sk['id']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(sk['desc']!, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFFD4AF37), size: 16),
+                const SizedBox(height: 4),
+                Text(sk['version']!, style: const TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -63,28 +83,39 @@ class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderSt
 
   Widget _buildHistorialTab() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF4C8CFA)));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFFD4AF37)));
     }
     if (_historial.isEmpty) {
-      return const Center(
-        child: Text(
-          '[SIN ACTIVIDAD LÓGICA]\nNo se han ejecutado Skills recientemente.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white54, fontFamily: 'Inter'),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, size: 64, color: Colors.white24),
+            SizedBox(height: 16),
+            Text(
+              'REGISTRO INMACULADO',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'No se han invocado subrutinas nativas aún.',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ],
         ),
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       itemCount: _historial.length,
       itemBuilder: (context, index) {
         final item = _historial[index];
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: const Color(0xFF1A1A24),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white12)
           ),
           child: Column(
@@ -93,19 +124,26 @@ class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderSt
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(item['skill'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontFamily: 'Inter', fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      const Icon(Icons.terminal, color: Color(0xFFD4AF37), size: 16),
+                      const SizedBox(width: 8),
+                      Text(item['skill'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    ],
+                  ),
                   Text(
                     item['timestamp']?.split('T')[0] ?? '',
-                    style: const TextStyle(color: Colors.white30, fontFamily: 'Inter', fontSize: 10),
+                    style: const TextStyle(color: Colors.white30, fontSize: 11),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(color: Colors.white12),
+              ),
               Text(
-                item['result'].toString(),
-                style: const TextStyle(color: Colors.white70, fontFamily: 'Inter', fontSize: 12),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+                'RETORNO: ${item['result']}',
+                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
               ),
             ],
           ),
@@ -115,11 +153,26 @@ class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderSt
   }
 
   Widget _buildConfiguracionTab() {
-    return const Center(
-      child: Text(
-        '[CONFIGURACIÓN SOBERANA]\nDirectivas de invocación protegidas.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.white54, fontFamily: 'Inter'),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.lock_person_outlined, size: 64, color: Color(0xFFD4AF37)),
+          const SizedBox(height: 24),
+          const Text(
+            'DIRECTIVAS SOBERANAS MANTENIDAS',
+            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2),
+          ),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Las habilidades solo son inyectadas en la Cápsula si esta posee los permisos habilitados localmente en SQLite.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54, height: 1.5),
+            ),
+          )
+        ],
       ),
     );
   }
@@ -129,20 +182,21 @@ class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderSt
     return Scaffold(
       backgroundColor: const Color(0xFF13131A),
       appBar: AppBar(
-        title: const Text('SKILL PLATFORM', style: TextStyle(fontFamily: 'Inter', fontSize: 16)),
+        title: const Text('SKILL PLATFORM', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2)),
         backgroundColor: const Color(0xFF0D0D12),
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFFD4AF37)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF4C8CFA),
-          labelColor: Colors.white,
+          indicatorColor: const Color(0xFFD4AF37),
+          labelColor: const Color(0xFFD4AF37),
           unselectedLabelColor: Colors.white30,
-          labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.bold),
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5),
           tabs: const [
             Tab(text: 'DISPONIBLES'),
             Tab(text: 'HISTORIAL'),
-            Tab(text: 'CONFIG'),
+            Tab(text: 'REGLAS'),
           ],
         ),
       ),

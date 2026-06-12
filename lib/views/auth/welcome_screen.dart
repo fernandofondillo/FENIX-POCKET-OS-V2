@@ -16,6 +16,8 @@ import '../../services/local_embedding_service.dart';
 import '../../services/secure_storage_service.dart';
 import '../obsidian/nano_obsidian_screen.dart';
 import '../skills/skills_screen.dart';
+import '../settings/settings_screen.dart';
+import '../profile/profile_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({Key? key}) : super(key: key);
@@ -171,7 +173,9 @@ class _ChatScreenState extends State<ChatScreen> {
     '[CORE_SYNC_OK] Soy tu encapsulado A.G.O.S local. Mis tensores no persisten nada de ti una vez apagada la RAM. ¿Sobre qué vector operamos?'
   ];
   bool _isProcessing = false;
-  String _capsulaActiva = 'general_coordinator';
+  String _capsulaActiva = 'Fénix Base'; // Actualizamos Default a un nombre premium
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _enviarMensaje() async {
     final text = _textController.text.trim();
@@ -270,26 +274,184 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _abrirSelectorCapsulas() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF13131A),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+            border: Border(top: BorderSide(color: Color(0xFFD4AF37), width: 1.5))
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const Text('CÁPSULAS DE IDENTIDAD', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2)),
+              const SizedBox(height: 24),
+              _buildCapsuleCard('Fénix Base', 'v2.0-Pro', 'INTEGRADO E INSTALADO', '12 Skills'),
+              const SizedBox(height: 12),
+              _buildCapsuleCard('Coach Carlos', 'Entrenamiento', 'INTEGRADO E INSTALADO', '3 Skills'),
+              const SizedBox(height: 12),
+              _buildCapsuleCard('Dra. Sofía', 'Salud y Nutrición', 'INTEGRADO E INSTALADO', '2 Skills'),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      }
+    );
+  }
+
+  Widget _buildCapsuleCard(String title, String badge1, String badge2, String badge3) {
+    bool isActive = _capsulaActiva == title;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _capsulaActiva = title);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFFD4AF37).withOpacity(0.15) : const Color(0xFF1A1A24),
+          border: Border.all(color: isActive ? const Color(0xFFD4AF37) : Colors.white12),
+          borderRadius: BorderRadius.circular(16)
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: isActive ? const Color(0xFFD4AF37) : Colors.white12, shape: BoxShape.circle),
+              child: Icon(Icons.psychology, color: isActive ? Colors.black : Colors.white54, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _badge(badge1, Colors.blueAccent),
+                      _badge(badge2, Colors.green),
+                      _badge(badge3, Colors.purpleAccent),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            if (isActive) const Icon(Icons.check_circle, color: Color(0xFFD4AF37))
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withOpacity(0.5))),
+      child: Text(text, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildDrawerMenu() {
+    return Drawer(
+      backgroundColor: const Color(0xFF13131A),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.white12))
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.diamond_outlined, color: Color(0xFFD4AF37), size: 40),
+                const SizedBox(height: 16),
+                const Text('FÉNIX POCKET OS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                Text('VER. 6.0 RC1 SOBERANA', style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 1)),
+              ],
+            ),
+          ),
+          _drawerItem('01', 'Nexus Console', Icons.terminal, () => Navigator.pop(context)),
+          _drawerItem('02', 'Nano-Obsidian', Icons.shield_outlined, () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const NanoObsidianScreen())); }),
+          _drawerItem('03', 'Skills History', Icons.memory, () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SkillsScreen())); }),
+          _drawerItem('04', 'Capsule Matrix', Icons.view_module_outlined, () { Navigator.pop(context); _abrirSelectorCapsulas(); }),
+          _drawerItem('05', 'Metabase Profile', Icons.person_outline, () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())); }),
+          _drawerItem('06', 'System Architecture', Icons.settings_outlined, () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); }),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerItem(String number, String title, IconData icon, VoidCallback onTap) {
+    return ListTile(
+      leading: Text(number, style: const TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold, fontSize: 12)),
+      title: Row(
+        children: [
+          Icon(icon, color: Colors.white70, size: 18),
+          const SizedBox(width: 12),
+          Text(title, style: const TextStyle(color: Colors.white, fontFamily: 'Inter', fontSize: 14)),
+        ],
+      ),
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nexus Console', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF0D0D12),
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shield_outlined, color: Colors.white54, size: 20),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NanoObsidianScreen())),
-            tooltip: 'Nano-Obsidian Vault',
+      key: _scaffoldKey,
+      drawer: _buildDrawerMenu(),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: AppBar(
+          backgroundColor: const Color(0xFF0D0D12),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white, size: 24),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           ),
-          IconButton(
-            icon: const Icon(Icons.terminal_outlined, color: Colors.white54, size: 20),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SkillsScreen())),
-            tooltip: 'Skills History',
+          title: Column(
+            children: [
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.diamond, color: Color(0xFFD4AF37), size: 20),
+                  const SizedBox(width: 8),
+                  const Text('ARQUITECTURA SOBERANA', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 3)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: const Color(0xFF4C8CFA).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                child: const Text('SMARTPHONE MEMORY / STATELESS VPS : ACTIVE', style: TextStyle(color: Color(0xFF4C8CFA), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+              )
+            ],
           ),
-        ],
+          centerTitle: true,
+          actions: [
+            GestureDetector(
+              onTap: _abrirSelectorCapsulas,
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0xFFD4AF37))),
+                child: const Icon(Icons.psychology, color: Color(0xFFD4AF37), size: 24),
+              ),
+            )
+          ],
+        ),
       ),
       backgroundColor: const Color(0xFF13131A),
       body: Column(
@@ -303,24 +465,39 @@ class _ChatScreenState extends State<ChatScreen> {
                 return Align(
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(16),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
                     decoration: BoxDecoration(
-                      color: isUser ? const Color(0xFF4C8CFA).withOpacity(0.2) : const Color(0xFF1A1A24),
-                      borderRadius: BorderRadius.circular(16).copyWith(
-                        topLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
-                        topRight: isUser ? const Radius.circular(4) : const Radius.circular(16)
+                      color: isUser ? const Color(0xFFD4AF37).withOpacity(0.1) : const Color(0xFF1A1A24),
+                      borderRadius: BorderRadius.circular(20).copyWith(
+                        topLeft: isUser ? const Radius.circular(20) : const Radius.circular(4),
+                        topRight: isUser ? const Radius.circular(4) : const Radius.circular(20)
                       ),
-                      border: isUser ? Border.all(color: const Color(0xFF4C8CFA).withOpacity(0.5)) : null
+                      border: Border.all(color: isUser ? const Color(0xFFD4AF37).withOpacity(0.3) : Colors.white12, width: 1)
                     ),
-                    child: Text(
-                      _mensajesUI[index].replaceAll('USUARIO: ', ''),
-                      style: TextStyle(
-                        color: _mensajesUI[index].startsWith('[ERROR_LINK]') ? Colors.redAccent : Colors.white70, 
-                        height: 1.5, 
-                        fontSize: 14,
-                        fontFamily: 'Inter'
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(isUser ? Icons.person : Icons.diamond, size: 14, color: isUser ? Colors.white54 : const Color(0xFFD4AF37)),
+                            const SizedBox(width: 6),
+                            Text(isUser ? 'HUMANO' : _capsulaActiva.toUpperCase(), style: TextStyle(color: isUser ? Colors.white54 : const Color(0xFFD4AF37), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _mensajesUI[index].replaceAll('USUARIO: ', ''),
+                          style: TextStyle(
+                            color: _mensajesUI[index].startsWith('[ERROR_LINK]') ? Colors.redAccent : Colors.white, 
+                            height: 1.6, 
+                            fontSize: 15,
+                            fontFamily: 'Inter'
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -330,27 +507,38 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_isProcessing)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: const Text('A.G.O.S procesando...', style: TextStyle(color: Colors.white54, fontFamily: 'Inter', fontSize: 12, fontStyle: FontStyle.italic)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(color: Color(0xFFD4AF37), strokeWidth: 2)),
+                  const SizedBox(width: 8),
+                  const Text('Vectorizando conocimiento...', style: TextStyle(color: Color(0xFFD4AF37), fontFamily: 'Inter', fontSize: 12, fontStyle: FontStyle.italic)),
+                ],
+              ),
             ),
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            decoration: const BoxDecoration(color: Color(0xFF0D0D12)),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0D0D12),
+              border: Border(top: BorderSide(color: Colors.white12))
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
                       color: const Color(0xFF1A1A24),
-                      borderRadius: BorderRadius.circular(24)
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white12)
                     ),
                     child: TextField(
                       controller: _textController,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
-                        hintText: 'Integrar comando léxico...',
+                        hintText: 'Transmite instrucción a $_capsulaActiva...',
                         hintStyle: TextStyle(color: Colors.white30, fontSize: 14),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14)
+                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16)
                       ),
                       onSubmitted: (_) => _enviarMensaje(),
                     ),
@@ -359,13 +547,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
-                    color: _isProcessing ? Colors.grey : const Color(0xFF4C8CFA),
+                    color: _isProcessing ? Colors.grey : const Color(0xFFD4AF37),
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      if (!_isProcessing) BoxShadow(color: const Color(0xFFD4AF37).withOpacity(0.3), blurRadius: 12, spreadRadius: 2)
+                    ]
                   ),
                   child: IconButton(
                     icon: _isProcessing 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                        : const Icon(Icons.send_rounded, color: Colors.black, size: 20),
                     onPressed: _enviarMensaje,
                   ),
                 )
@@ -377,3 +568,4 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
