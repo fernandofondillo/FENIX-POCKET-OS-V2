@@ -369,3 +369,12 @@ Bajo el paraguas de integración V2 -> V6, todo código expuesto durante resoluc
 
 ### 25.4 Listado de Archivos Cifrados (Mejora V6)
 Se ha implementado el método `listVaultFiles()` en `SecureStorageService` aprovechando `dart:io Directory`. Esto permite a la terminal listar dinámicamente los contenidos locales en disco (Nano-Obsidian) sin alterar la arquitectura original de servicios, permitiendo orquestar el RAG local u ofuscaciones sin delegarle archivos al API.
+
+### 25.5 Ampliación del Contexto Local y Restricción de Payload (V6)
+Para evitar los OOM (Out Of Memory) en el nodo LLM y reducir la latencia de red, se modificó el `MemoryService`. La ventana deslizante (`_memoria_inmediata`) aloja ahora hasta 50 intenciones en la RAM móvil garantizando una retención robusta, pero la compilación de la request hacia FastAPI trunca asimétricamente el array, subiendo únicamente los últimos 10 mensajes. Esto salvaguarda la ventana de contexto del LLM (<4096 tokens) y mantiene el consumo de red en márgenes microscópicos.
+
+### 25.6 Ruteo Semántico Ponderado y Análisis de Empates (V6)
+El `CapsuleDetector` ha sido completamente rediseñado. Ha abandonado el modelo unidimensional de *Bag-of-Words* (donde cada hit valía 1 punto) hacia una matriz de pesos léxicos escalonada (ej. `ayuno = 1`, `keto = 3`).
+Adicionalmente, si el input colisiona y empata entre dos identidades cruzadas (P.ej. Biohacking vs. Nutrición al detectar "ayuno"), el sistema ahora aplica dos *Tiebreakers* consecutivos:
+1.  **Bonus de Continuidad:** Inyecta +1 artificial si la cápsula anterior operó en la respuesta inmediatamente pasada.
+2.  **Cascada de Jerarquía (`_jerarquia_default`):** Si el empate persiste, delega la ejecución resolviendo en cascada desde el concepto más holístico al más segmentado, previniendo loops lógicos del agente.
