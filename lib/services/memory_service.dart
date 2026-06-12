@@ -17,7 +17,7 @@ final Logger _logger = Logger();
 class MemoryService {
   // --- Nivel 1: Memoria Inmediata (RAM) ---
   final List<Map<String, String>> _memoria_inmediata = [];
-  static const int _limite_inmediata = 8; // Mantenemos el buffer pequeño para no quemar el VPS
+  static const int _limite_inmediata = 50; // Buffer expandido para retención local V6
 
   // --- Nivel 2: Memoria de Identidad (SQLite) ---
   Database? _db_identidad;
@@ -42,7 +42,14 @@ class MemoryService {
     _memoria_inmediata.add({'role': rol, 'content': contenido});
   }
 
-  List<Map<String, String>> obtener_memoria_inmediata() => List.unmodifiable(_memoria_inmediata);
+  /// Memoria retenida completa en RAM para contexto de Flutter
+  List<Map<String, String>> obtener_memoria_completa() => List.unmodifiable(_memoria_inmediata);
+
+  /// Payload restringido para FastAPI (V6 Zero-Knowledge) - Solo enviamos los últimos 10 mensajes
+  List<Map<String, String>> obtener_memoria_inmediata() {
+    int start = _memoria_inmediata.length > 10 ? _memoria_inmediata.length - 10 : 0;
+    return List.unmodifiable(_memoria_inmediata.sublist(start));
+  }
 
   void limpiar_memoria_inmediata() {
     _memoria_inmediata.clear();
