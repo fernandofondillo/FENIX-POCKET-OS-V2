@@ -148,8 +148,47 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 }
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
+
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _textController = TextEditingController();
+  final List<String> _mensajesUI = [
+    '[CORE_SYNC_OK] Soy tu encapsulado A.G.O.S local. Mis tensores no persisten nada de ti una vez apagada la RAM. ¿Sobre qué vector operamos?'
+  ];
+  bool _isProcessing = false;
+
+  void _enviarMensaje() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _isProcessing) return;
+
+    setState(() {
+      _mensajesUI.add('USUARIO: $text');
+      _textController.clear();
+      _isProcessing = true;
+    });
+
+    try {
+      // Simulación de pipeline (payload strict y long-polling HTTP 202)
+      await Future.delayed(const Duration(seconds: 2)); // Simula long-polling
+      
+      // Simular fallo aleatorio o respuesta normal
+      // (Aquí normalmente invocarías ApiService para mandar: user_id, mensaje_actual, perfil_identidad, contexto_rag_hibrido, capsula_activa, historial_reciente)
+      setState(() {
+        _mensajesUI.add('A.G.O.S: Reconozco el parámetro. Vector de procesamiento finalizado.');
+      });
+    } catch (e) {
+      setState(() {
+        _mensajesUI.add('[ERROR_LINK] El Agente A.G.O.S no pudo establecer el enlace a la red temporalmente');
+      });
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,26 +203,43 @@ class ChatScreen extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: ListView.builder(
               padding: const EdgeInsets.all(24),
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
+              itemCount: _mensajesUI.length,
+              itemBuilder: (context, index) {
+                final isUser = _mensajesUI[index].startsWith('USUARIO:');
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A24),
-                      borderRadius: BorderRadius.circular(16).copyWith(topLeft: const Radius.circular(4))
+                      color: isUser ? const Color(0xFF4C8CFA).withOpacity(0.2) : const Color(0xFF1A1A24),
+                      borderRadius: BorderRadius.circular(16).copyWith(
+                        topLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
+                        topRight: isUser ? const Radius.circular(4) : const Radius.circular(16)
+                      ),
+                      border: isUser ? Border.all(color: const Color(0xFF4C8CFA).withOpacity(0.5)) : null
                     ),
-                    child: const Text(
-                      '[CORE_SYNC_OK] Soy tu encapsulado A.G.O.S local. Mis tensores no persisten nada de ti una vez apagada la RAM. ¿Sobre qué vector operamos?',
-                      style: TextStyle(color: Colors.white70, height: 1.5, fontSize: 14),
+                    child: Text(
+                      _mensajesUI[index].replaceAll('USUARIO: ', ''),
+                      style: TextStyle(
+                        color: _mensajesUI[index].startsWith('[ERROR_LINK]') ? Colors.redAccent : Colors.white70, 
+                        height: 1.5, 
+                        fontSize: 14,
+                        fontFamily: 'Inter'
+                      ),
                     ),
                   ),
-                )
-              ],
+                );
+              },
             ),
           ),
+          if (_isProcessing)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: const Text('A.G.O.S procesando...', style: TextStyle(color: Colors.white54, fontFamily: 'Inter', fontSize: 12, fontStyle: FontStyle.italic)),
+            ),
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             decoration: const BoxDecoration(color: Color(0xFF0D0D12)),
@@ -195,26 +251,30 @@ class ChatScreen extends StatelessWidget {
                       color: const Color(0xFF1A1A24),
                       borderRadius: BorderRadius.circular(24)
                     ),
-                    child: const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    child: TextField(
+                      controller: _textController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         hintText: 'Integrar comando léxico...',
                         hintStyle: TextStyle(color: Colors.white30, fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14)
                       ),
+                      onSubmitted: (_) => _enviarMensaje(),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF4C8CFA),
+                  decoration: BoxDecoration(
+                    color: _isProcessing ? Colors.grey : const Color(0xFF4C8CFA),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
-                    onPressed: () {},
+                    icon: _isProcessing 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 20),
+                    onPressed: _enviarMensaje,
                   ),
                 )
               ],

@@ -384,3 +384,11 @@ Se ha implementado la UI terminal `NanoObsidianScreen` con tres submódulos comp
 1.  **Bóveda de Documentos:** Mapea el Filesystem (`SecureStorageService`) para listar dinámicamente los markdowns previamente cifrados en el dispositivo. 
 2.  **Editor Matemático (`note_editor_screen`):** Al guardar un documento, dispara sincronizadamente una encriptación GCM hacia el disco y una vectorización en segundo plano (`indexar_fragmento`) hacia SQLite, indexando el material para el RAG sin bloquear el UI thread.
 3.  **Buscador RAG (`note_search_screen`):** Interfaz para rastreo semántico. Interroga directamente al SQLite local operando una Similitud de Cosenos (`buscar_top_k`) devolviendo a nivel UI un "Match %" ordenado por relevancia probabilística.
+
+### 25.8 Interfaz de Skills y Auditoría Zero-Knowledge (V6)
+Se ha orquestado `skills_screen.dart` bajo una taxonomía de 3 paneles (Disponibles, Historial y Configuración) conservando el rigor estético del IDE puro. El bloque de Historial opera en total desconexión, mapeando el disco (`SharedPreferences('skills_executed_history')`) para mostrar al CTO y al Usuario el rastro inmutable de las invocaciones y tool-uses desencadenadas autonómicamente por A.G.O.S.
+
+### 25.9 Resiliencia Transaccional HTTP 202 en UI (Nexus Console)
+El core asíncrono sobre `ChatScreen` absorbe ahora el protocolo de Long-Polling mediante dos advecciones de resfriamiento visual (UX Resilience):
+1.  Mientras el event-loop interroga al VPS asíncronamente (esperando que Arq+Redis disuelvan los tokens), la terminal pinta de forma sutil `A.G.O.S procesando...`, amortiguando la incertidumbre del usuario, paralizando re-iteraciones y sin quebrar el frame principal.
+2.  Desacople defensivo (Timeout Fallback): Si la promesa de red asíncrona lanza Excepción (ya sea por Time-Out de 30s, o un error fatal en el clúster de inferencia de Python), Flutter incrustará una traza silenciosa en rojo `[ERROR_LINK] El Agente A.G.O.S no pudo establecer el enlace a la red temporalmente`. Evita crasheos bloqueantes, y defiende el uptime local de la terminal, un mandato inquebrantable en arquitecturas V6.
