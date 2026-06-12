@@ -49,14 +49,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 32),
               _buildSectionHeader('IDENTIDAD MATRIZ (EAV Engine)'),
-              _buildMetricCard('Denominación Primaria', _perfil['nombre_usuario'] ?? 'N/A', Icons.person),
-              _buildMetricCard('Rol Funcional', _perfil['profesion_activa'] ?? 'N/A', Icons.work_outline),
-              _buildMetricCard('Metavariable (Objetivo)', _perfil['meta_dominante'] ?? 'N/A', Icons.flag_outlined),
+              _buildMetricCard('Denominación Primaria', 'nombre_usuario', _perfil['nombre_usuario'] ?? 'N/A', Icons.person),
+              _buildMetricCard('Rol Funcional', 'profesion_activa', _perfil['profesion_activa'] ?? 'N/A', Icons.work_outline),
+              _buildMetricCard('Metavariable (Objetivo)', 'meta_dominante', _perfil['meta_dominante'] ?? 'N/A', Icons.flag_outlined),
               
               const SizedBox(height: 32),
               _buildSectionHeader('PARÁMETROS DEL SISTEMA'),
-              _buildMetricCard('Estado de Configuración', _perfil['config_inicial'] ?? 'N/A', Icons.check_circle_outline),
-              _buildMetricCard('Fecha Onboarding (UTC)', _perfil['fecha_onboarding'] ?? 'N/A', Icons.calendar_today),
+              _buildMetricCard('Estado de Configuración', 'config_inicial', _perfil['config_inicial'] ?? 'N/A', Icons.check_circle_outline),
+              _buildMetricCard('Fecha Onboarding (UTC)', 'fecha_onboarding', _perfil['fecha_onboarding'] ?? 'N/A', Icons.calendar_today),
             ],
           ),
     );
@@ -72,35 +72,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMetricCard(String label, String value, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A24),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12)
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFD4AF37).withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: const Color(0xFFD4AF37), size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(color: Colors.white30, fontSize: 11, letterSpacing: 1)),
-                const SizedBox(height: 4),
-                Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
+  Widget _buildMetricCard(String label, String dbKey, String value, IconData icon) {
+    return GestureDetector(
+      onTap: () => _editValue(label, dbKey, value),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A24),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white12)
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFD4AF37).withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: const Color(0xFFD4AF37), size: 24),
             ),
-          )
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(color: Colors.white30, fontSize: 11, letterSpacing: 1)),
+                  const SizedBox(height: 4),
+                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            const Icon(Icons.edit_outlined, color: Colors.white30, size: 20)
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _editValue(String label, String dbKey, String currentValue) async {
+    final TextEditingController controller = TextEditingController(text: currentValue == 'N/A' ? '' : currentValue);
+    final String? newValue = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFD4AF37), width: 1)),
+          title: Text('Editar $label', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white54)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFD4AF37))),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('CANCELAR', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('GUARDAR', style: TextStyle(color: Color(0xFFD4AF37), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      }
+    );
+
+    if (newValue != null && newValue.isNotEmpty && newValue != currentValue) {
+      await _db.upsertEav('base', dbKey, newValue);
+      await _loadProfile();
+    }
   }
 }
