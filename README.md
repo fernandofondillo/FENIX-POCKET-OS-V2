@@ -378,3 +378,9 @@ El `CapsuleDetector` ha sido completamente rediseñado. Ha abandonado el modelo 
 Adicionalmente, si el input colisiona y empata entre dos identidades cruzadas (P.ej. Biohacking vs. Nutrición al detectar "ayuno"), el sistema ahora aplica dos *Tiebreakers* consecutivos:
 1.  **Bonus de Continuidad:** Inyecta +1 artificial si la cápsula anterior operó en la respuesta inmediatamente pasada.
 2.  **Cascada de Jerarquía (`_jerarquia_default`):** Si el empate persiste, delega la ejecución resolviendo en cascada desde el concepto más holístico al más segmentado, previniendo loops lógicos del agente.
+
+### 25.7 Subsistema Visual Nano-Obsidian (V6)
+Se ha implementado la UI terminal `NanoObsidianScreen` con tres submódulos completamente integrados al Kernel Zero-Knowledge:
+1.  **Bóveda de Documentos:** Mapea el Filesystem (`SecureStorageService`) para listar dinámicamente los markdowns previamente cifrados en el dispositivo. 
+2.  **Editor Matemático (`note_editor_screen`):** Al guardar un documento, dispara sincronizadamente una encriptación GCM hacia el disco y una vectorización en segundo plano (`indexar_fragmento`) hacia SQLite, indexando el material para el RAG sin bloquear el UI thread.
+3.  **Buscador RAG (`note_search_screen`):** Interfaz para rastreo semántico. Interroga directamente al SQLite local operando una Similitud de Cosenos (`buscar_top_k`) devolviendo a nivel UI un "Match %" ordenado por relevancia probabilística.
