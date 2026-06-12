@@ -23,7 +23,7 @@ class InferenceRouter:
         # Temperature baja garantiza enfoque heurístico directo, límite estricto de tokens de salida (máx 500 según las reglas).
         self.temperature = 0.3
         self.top_p = 0.9
-        self.max_tokens = 300
+        self.max_tokens = 1024
 
     async def _call_llama_cpp_local(self, messages: List[Dict[str, Any]]) -> str:
         """Comunica asíncronamente con el Daemon Local compatible con OpenAI API"""
