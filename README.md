@@ -427,3 +427,30 @@ Para no perder el hilo de las recientes inyecciones arquitectónicas V6, aquí s
    El orquestador en el backend (FastAPI) ha incrementado su cuota de salida predeterminada, esto garantiza que las recolecciones complejas o respuestas largas no terminen cortadas.
    *   **Archivo:** `app/services/inference_router.py` (*en el backend VPS*)
    *   **Cambio consolidado:** `max_tokens` incrementado a 1024. No es necesario modificarlo vía remota por cada request, el límite intrínseco del VPS ya está preparado para los *prompts* ricos en contexto.
+
+### 26. [ANEXO DevOps] Automatización CI/CD (Protocolo Hermes)
+Para orquestar la compilación remota y empaquetar el producto final (APK/IPA) de forma completamente determinista, el agente operativo (Hermes) debe inicializar los procesos de la siguiente manera:
+
+1. **Movilizar las Plantillas de Construcción:**
+   Las plantillas YAML de GitHub Actions se encuentran securizadas en `infra/ci_templates/`. Cópiarlas al directorio `.github/workflows/` (créalo si no existe):
+   ```bash
+   mkdir -p .github/workflows
+   cp infra/ci_templates/build_android.yml .github/workflows/
+   cp infra/ci_templates/build_ios.yml .github/workflows/
+   ```
+
+2. **Detonar el Flujo de Integración Continua (CI):**
+   Agrega los nuevos archivos de workflow al track de git, realiza un commit y empújalos hacia el pipeline de GitHub:
+   ```bash
+   git add .github/workflows/
+   git commit -m "chore: enable Hermes CI/CD protocol for Android & iOS builds"
+   git push origin main
+   ```
+   *(Asegúrate de ejecutar el push hacia la rama principal configurada, típicamente `main` o `master`)*.
+
+3. **Recuperación de los Instaladores por parte del CEO:**
+   Una vez que el código se inyecta en la bóveda de la rama principal, el clúster de GitHub Actions disparará asíncronamente a los *runners* en Ubuntu y macOS.
+   *   Accede a la pestaña **Actions** en el repositorio de GitHub.
+   *   Selecciona el workflow recientemente ejecutado (Ej. "Build Android APK" o "Build iOS IPA").
+   *   Desliza hacia la parte inferior hasta la sección **Artifacts**.
+   *   Descarga directamente los empaquetados `.zip` que contienen los binarios listos: `android-release-apk` y `ios-release-ipa`.
