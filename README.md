@@ -454,3 +454,16 @@ Para orquestar la compilación remota y empaquetar el producto final (APK/IPA) d
    *   Selecciona el workflow recientemente ejecutado (Ej. "Build Android APK" o "Build iOS IPA").
    *   Desliza hacia la parte inferior hasta la sección **Artifacts**.
    *   Descarga directamente los empaquetados `.zip` que contienen los binarios listos: `android-release-apk` y `ios-release-ipa`.
+
+### 27. [ANEXO Producción] Auditoría Exhaustiva RC1 y De-Mocking
+En el salto al *Release Candidate* (RC1), se auditaron y reemplazaron estrictamente los últimos stubs/mocks que persistían en la capa visual de interacción. 
+
+1.  **De-Mocking del Nexus Console (`ChatScreen`):**
+    *   Se erradicó el bloqueo artificial (`await Future.delayed`) sustituyéndolo por el ciclo orgánico de `ApiService().enviar_mensaje_con_polling`. 
+    *   La inyección de parámetros (Cápsulas, Historial, Identidad EAV) dejó de ser conceptual para convertirse en una instancia tipificada de `PayloadRequest`, blindando en `snake_case` el contrato hacia Pydantic V2.
+    *   La ejecución de `Skills` ahora detecta la llave matricial `skill_call` en el HTTP/JSON e invoca asíncronamente `_ejecutarSkillReal` conectando el resultado localmente a través de `SkillsService` y protegiendo el pipeline Zero-Knowledge.
+2.  **RAG Zero-Knowledge Habilitado:**
+    *   `NanoObsidianScreen`, y subsecuentemente `note_search_screen.dart` y `note_editor_screen.dart`, operan a un 100% sobre `LocalEmbeddingService` escribiendo y leyendo vectores reales sobre SQFLite.
+    *   Se ratificó el `try/catch` para cuando la NPU carece del motor TensorFlow Lite, desplegando un Fallback matemático limpio que impide los OOM y cierres aleatorios de la App.
+3.  **Timeout Extremo Implementado:**
+    *   La abstracción HTTP principal sobre `ApiService` está ahora recubierta por un `.timeout(const Duration(seconds: 30))`. Ante el silencio del orquestador, la red rinde y la instancia nativa escupirá controladamente el error en rojo puritano `[ERROR_LINK] El Agente A.G.O.S...` evitando que el hilo asíncrono ciegue al usuario.

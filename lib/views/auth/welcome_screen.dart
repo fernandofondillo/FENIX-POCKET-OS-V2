@@ -1,11 +1,15 @@
 // lib/views/auth/welcome_screen.dart
 import 'dart:convert';
 import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../services/perfil_db_service.dart';
+import '../../services/api_service.dart';
+import '../../services/skills_service.dart';
+import '../../models/payload_request.dart';
 import '../obsidian/nano_obsidian_screen.dart';
 import '../skills/skills_screen.dart';
 
@@ -175,20 +179,68 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      // Simulación de pipeline (payload strict y long-polling HTTP 202)
-      await Future.delayed(const Duration(seconds: 2)); // Simula long-polling
+      final String userId = await _storage.read(key: 'user_id') ?? const Uuid().v4();
       
-      // Simular fallo aleatorio o respuesta normal
-      // (Aquí normalmente invocarías ApiService para mandar: user_id, mensaje_actual, perfil_identidad, contexto_rag_hibrido, capsula_activa, historial_reciente)
+      final db = PerfilDbService();
+      await db.initDb();
+      final identidad = await db.getPerfilCompleto();
+      
+      // Creamos un payload estrictamente tipado y empaquetado en snake_case al enviar al backend
+      final payload = PayloadRequest(
+        userId: userId,
+        mensajeActual: text,
+        perfilIdentidad: identidad,
+        contextoRagHibrido: ContextoRagHibridoPayload(
+          historialUsuario: '',
+          conocimientoExperto: 'Conocimiento offline base.'
+        ),
+        capsulaActiva: CapsulaActivaPayload(
+          id: 'CORE',
+          systemPrompt: 'Eres A.G.O.S, asistente seguro.',
+          allowedSkills: ['agenda_crear', 'web_search']
+        ),
+        historialReciente: []
+      );
+
+      final apiService = ApiService();
+      // Delegación Real hacia el ORQUESTADOR ASGI FastAPI
+      final resultado = await apiService.enviar_mensaje_con_polling(payload).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException("El clúster no respondió a tiempo.")
+      );
+
       setState(() {
-        _mensajesUI.add('A.G.O.S: Reconozco el parámetro. Vector de procesamiento finalizado.');
+        if (resultado.containsKey('response')) {
+           _mensajesUI.add('A.G.O.S: ${resultado['response']}');
+        } else if (resultado.containsKey('skill_call')) {
+           final skillData = resultado['skill_call'];
+           _mensajesUI.add('A.G.O.S (Accionando Skill): Invocando ${skillData['name']} localmente...');
+           // Intercepción Ejecutiva local (De-Mocking)
+           _ejecutarSkillReal(skillData['name'], skillData['arguments'], userId);
+        } else {
+           _mensajesUI.add('A.G.O.S: Respuesta estructural no parseable. $resultado');
+        }
       });
     } catch (e) {
       setState(() {
-        _mensajesUI.add('[ERROR_LINK] El Agente A.G.O.S no pudo establecer el enlace a la red temporalmente');
+        _mensajesUI.add('[ERROR_LINK] El Agente A.G.O.S no pudo establecer el enlace a la red temporalmente ($e)');
       });
     } finally {
       if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _ejecutarSkillReal(String skillName, Map<String, dynamic> arguments, String userId) async {
+    try {
+      final skillsService = SkillsService();
+      final result = await skillsService.execute_skill(skillName, arguments, userId);
+      setState(() {
+         _mensajesUI.add('A.G.O.S (Resultado Skill): ${result.toString()}');
+      });
+    } catch (e) {
+      setState(() {
+         _mensajesUI.add('[ERROR_LINK] Ejecución de Skill fallida: $e');
+      });
     }
   }
 
