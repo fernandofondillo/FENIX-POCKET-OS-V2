@@ -395,3 +395,13 @@ El core asíncrono sobre `ChatScreen` absorbe ahora el protocolo de Long-Polling
 
 ### 25.10 Modificación del Límite de Tokens del LLM (V6)
 Se amplió la capacidad de respuesta del motor `llama-server` (dentro de `inference_router.py`), subiendo el bloque de salida (`max_tokens`) de 300 a 1024. Este cambio preserva la arquitectura *stateless* y ciega del orquestador (sin retener logs ni alterar payloads) pero evita el truncamiento asfixiante de respuestas complejas o skills extensas generadas por el modelo, protegiendo a su vez la latencia del VPS mediante el límite natural del `1024` tokens.
+
+### 25.11 Unificación de Red y Blindaje del Contrato (V6)
+Para asegurar el enrutamiento inquebrantable desde la bóveda hacia el clúster sin estados intermedios, se establecieron las siguientes políticas estrictas:
+1.  **Directiva Única de Endpoint (`AppConfig`):** Se creó `/lib/core/app_config.dart` como la única fuente de verdad para la conexión al clúster (`apiBaseUrl`). Todos los servicios de red (`ApiService`, `SkillsService`) absorben obligatoriamente la constante declarada allí (ej. el túnel de ngrok/VPS).
+2.  **Blindaje Estático en `PayloadRequest`:** El mapeo del JSON hacia Pydantic ha sido atado con fuerte tipado mediante clases PODO internas (`CapsulaActivaPayload`, `ContextoRagHibridoPayload`). Al hacer `.toJson()`, se exigen mandatoriamente todos los atributos requeridos serializando el payload en `snake_case` estricto, mitigando de raíz las divergencias de inyección frente al `FastAPI`.
+3.  **Cuádruple Interfaz API:** El `ApiService` se ha ampliado para exponer textualmente las abstracciones del backend VPS:
+    *   `POST /api/v1/chat` (Emisión Asíncrona HTTP 202).
+    *   `GET /api/v1/task/{task_id}` (Receptor Observador 800ms).
+    *   `POST /api/v1/skills/execute` (Inyección Activa de Skills).
+    *   `POST /api/v1/consolidate` (Módulo de Fusión en Batch).

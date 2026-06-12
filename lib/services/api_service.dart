@@ -4,13 +4,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../models/payload_request.dart';
+import '../core/app_config.dart';
 
 /// Servicio robusto encargado de dialogar con el VPS backend bajo el nuevo paradigma
 /// de Arquitectura Orientada a Eventos (Redis + Arq).
 class ApiService {
-  final String _base_url;
-
-  ApiService({required String baseUrl}) : _base_url = baseUrl;
+  final String _base_url = AppConfig.apiBaseUrl;
 
   /// Envía el payload denso al Endpoint Ingestor No-Bloqueante (Event-Driven).
   /// Captura el `task_id` y delega la responsabilidad a un ciclo automatizado de Long-Polling.
@@ -97,6 +96,53 @@ class ApiService {
 
       // 5. Suspensión del hilo asíncrono temporal para espaciar las requests a Hostinger.
       await Future.delayed(Duration(milliseconds: intervalo_polling_ms));
+    }
+  }
+
+  /// Ejecuta skills manuales de forma síncrona
+  Future<Map<String, dynamic>> ejecutar_skill(String skillName, Map<String, dynamic> arguments) async {
+    final String url_skills = '$_base_url/api/v1/skills/execute';
+    
+    try {
+      final respuesta = await http.post(
+        Uri.parse(url_skills),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode({
+          'skill_name': skillName,
+          'arguments': arguments
+        }),
+      );
+
+      if (respuesta.statusCode == 200) {
+        return jsonDecode(respuesta.body);
+      } else {
+        throw Exception("Error al ejecutar skill. HTTP: ${respuesta.statusCode}");
+      }
+    } catch (e) {
+      print("[API_SERVICE_ERROR] Error ejecutando skill: $e");
+      rethrow;
+    }
+  }
+
+  /// Endpoint de consolidación para unificar perfiles o vectorización batch
+  Future<Map<String, dynamic>> consolidar_perfil(Map<String, dynamic> datos) async {
+    final String url_consolidate = '$_base_url/api/v1/consolidate';
+    
+    try {
+      final respuesta = await http.post(
+        Uri.parse(url_consolidate),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode(datos), // Debe respetar `snake_case` desde el invocador
+      );
+
+      if (respuesta.statusCode == 200) {
+        return jsonDecode(respuesta.body);
+      } else {
+        throw Exception("Error consolidando perfil. HTTP: ${respuesta.statusCode}");
+      }
+    } catch (e) {
+      print("[API_SERVICE_ERROR] Error en consolidación: $e");
+      rethrow;
     }
   }
 }

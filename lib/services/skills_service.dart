@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
+import '../core/app_config.dart';
 
 final Logger _logger = Logger();
 
@@ -11,15 +12,16 @@ class SkillsService {
   static const String _historial_claves = 'skills_executed_history';
 
   // Inyección del Cliente Dio bajo BaseOptions nativo del Framework.
-  SkillsService({required String baseUrl}) 
+  SkillsService() 
       : _dio = Dio(BaseOptions(
-          baseUrl: baseUrl, 
+          baseUrl: AppConfig.apiBaseUrl, 
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 30)
         )) {
     // Intercepción visual de Consola Opcional. No rompe abstracción.
     // _dio.interceptors.add(LogInterceptor(responseBody: true));
   }
+
 
   /// 1. Listar Habilidades Dinámicamente según la Cápsula o System Directive
   List<String> listar_habilidades_permitidas(List<String> allowed_skills) {

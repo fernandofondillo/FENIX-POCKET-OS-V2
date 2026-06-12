@@ -1,5 +1,38 @@
 // lib/models/payload_request.dart
 
+class CapsulaActivaPayload {
+  final String id;
+  final String systemPrompt;
+  final List<String> allowedSkills;
+
+  CapsulaActivaPayload({
+    required this.id,
+    required this.systemPrompt,
+    required this.allowedSkills,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'system_prompt': systemPrompt,
+        'allowed_skills': allowedSkills,
+      };
+}
+
+class ContextoRagHibridoPayload {
+  final String historialUsuario;
+  final String conocimientoExperto;
+
+  ContextoRagHibridoPayload({
+    required this.historialUsuario,
+    required this.conocimientoExperto,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'historial_usuario': historialUsuario,
+        'conocimiento_experto': conocimientoExperto,
+      };
+}
+
 /// Representa la carga densa de información contextual efímera
 /// que el dispositivo móvil emitirá hacia el servidor VPS.
 class PayloadRequest {
@@ -14,10 +47,10 @@ class PayloadRequest {
   final Map<String, dynamic> perfilIdentidad;
   
   /// Fragmentos estructurados correspondientes a un sistema RAG local, si aplica.
-  final String contextoRagHibrido;
+  final ContextoRagHibridoPayload contextoRagHibrido;
   
   /// Detalles de la cápsula de personalidad activa (Ej. "Entrenador", "Ingeniero").
-  final Map<String, dynamic> capsulaActiva;
+  final CapsulaActivaPayload capsulaActiva;
   
   /// Historial Fifo ultra-compacto y encriptado en reposo en el móvil de últimos comandos del chat
   final List<Map<String, String>> historialReciente;
@@ -38,8 +71,8 @@ class PayloadRequest {
       'user_id': userId,
       'mensaje_actual': mensajeActual,
       'perfil_identidad': perfilIdentidad,
-      'contexto_rag_hibrido': contextoRagHibrido,
-      'capsula_activa': capsulaActiva,
+      'contexto_rag_hibrido': contextoRagHibrido.toJson(),
+      'capsula_activa': capsulaActiva.toJson(),
       'historial_reciente': historialReciente,
     };
   }

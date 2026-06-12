@@ -10,7 +10,7 @@ class SkillsScreen extends StatefulWidget {
 
 class _SkillsScreenState extends State<SkillsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final SkillsService _skillsService = SkillsService(baseUrl: 'http://localhost');
+  final SkillsService _skillsService = SkillsService();
   List<Map<String, dynamic>> _historial = [];
   bool _isLoading = true;
 
