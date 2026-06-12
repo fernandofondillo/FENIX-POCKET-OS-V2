@@ -6,6 +6,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../services/perfil_db_service.dart';
+import '../obsidian/nano_obsidian_screen.dart';
+import '../skills/skills_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({Key? key}) : super(key: key);
@@ -198,6 +200,18 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: const Color(0xFF0D0D12),
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shield_outlined, color: Colors.white54, size: 20),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NanoObsidianScreen())),
+            tooltip: 'Nano-Obsidian Vault',
+          ),
+          IconButton(
+            icon: const Icon(Icons.terminal_outlined, color: Colors.white54, size: 20),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SkillsScreen())),
+            tooltip: 'Skills History',
+          ),
+        ],
       ),
       backgroundColor: const Color(0xFF13131A),
       body: Column(
