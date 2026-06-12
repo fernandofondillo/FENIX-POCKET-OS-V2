@@ -219,7 +219,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final payload = PayloadRequest(
         userId: userId,
         mensajeActual: text,
-        perfilIdentidad: identidad,
+        perfilIdentidad: jsonEncode(identidad),
         contextoRagHibrido: ContextoRagHibridoPayload(
           historialUsuario: historialUsuarioStr.isEmpty ? 'Ninguno' : historialUsuarioStr,
           conocimientoExperto: expertoContext.isEmpty ? '' : expertoContext

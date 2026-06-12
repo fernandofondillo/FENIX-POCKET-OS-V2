@@ -44,7 +44,7 @@ class PayloadRequest {
   final String mensajeActual;
   
   /// La instancia completa de la identidad base del usuario extraída de SQLite.
-  final Map<String, dynamic> perfilIdentidad;
+  final String perfilIdentidad;
   
   /// Fragmentos estructurados correspondientes a un sistema RAG local, si aplica.
   final ContextoRagHibridoPayload contextoRagHibrido;
@@ -74,6 +74,7 @@ class PayloadRequest {
       'contexto_rag_hibrido': contextoRagHibrido.toJson(),
       'capsula_activa': capsulaActiva.toJson(),
       'historial_reciente': historialReciente,
+      'active_skills': const [],
     };
   }
 }
