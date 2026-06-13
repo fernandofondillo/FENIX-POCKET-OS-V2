@@ -73,7 +73,24 @@ class ApiService {
           // 2. Transmisión Completada
           if (estado == 'completed' && datos_polling.containsKey('result')) {
             print("[API_SERVICE] Tarea completada. Recepción encriptada entregada y borrada paralelamente en Servidor.");
-            return datos_polling['result'];
+            final Map<String, dynamic> data = datos_polling['result'] as Map<String, dynamic>;
+            
+            final String respuestaText = data['assistant_response']?.toString() ?? '';
+            final List<dynamic> executedSkills = data['executed_skills'] as List<dynamic>? ?? [];
+            final List<dynamic> perfilUpdate = data['perfil_update'] as List<dynamic>? ?? [];
+
+            // Si existen skills ejecutadas, reportamos el skill call
+            if (executedSkills.isNotEmpty) {
+               return {
+                 'skill_call': {
+                   'name': executedSkills.first['skill_name'] ?? executedSkills.first['name'] ?? 'Unknown',
+                   'arguments': executedSkills.first['arguments'] ?? {}
+                 }
+               };
+            }
+            
+            // Retorna limpiamente con la llave 'response' esperada por el UI
+            return {'response': respuestaText};
           } 
           // 3. Proceso en Continuo
           else if (estado == 'processing' || estado == 'queued') {
